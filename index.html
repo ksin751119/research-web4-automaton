@@ -2316,20 +2316,17 @@
 
             <div class="df-divider"></div>
 
-            <!-- Step 3: Register Domain + Pay -->
+            <!-- Step 3: Register Domain (Credits deducted by Conway API) -->
             <div class="df-step">
                 <div class="df-cell active">
                     <span class="df-step-num">03</span>
                     <span class="mono" contenteditable="false">register_domain("bob.conway.tech")</span>
                 </div>
                 <div class="df-cell active-cyan">
-                    <span class="df-label">扣 Credits</span>
-                    <span contenteditable="false">域名費 → x402</span>
+                    <span class="df-label">API 自動扣 Credits</span>
+                    <span contenteditable="false">POST /v1/domains/register</span>
                 </div>
-                <div class="df-cell active-warm">
-                    <span class="df-label">USDC 結算</span>
-                    <span contenteditable="false">Base 鏈上確認</span>
-                </div>
+                <div class="df-cell"></div>
             </div>
 
             <div class="df-divider"></div>
