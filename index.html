@@ -2331,40 +2331,29 @@
 
             <div class="df-divider"></div>
 
-            <!-- Step 4: Credits insufficient → x402 topup via USDC -->
+            <!-- Step 4: Credits insufficient → x402 topup via USDC (compact 2-row layout) -->
             <div class="df-step">
                 <div class="df-cell active">
                     <span class="df-step-num">04</span>
-                    <span contenteditable="false">Turn 開始偵測 Credits 不足</span><br>
-                    <span style="color: var(--text-dim);" contenteditable="false">自動觸發 bootstrapTopup()</span>
+                    <span contenteditable="false">偵測 Credits 不足</span>
                 </div>
-                <div class="df-cell"></div>
-                <div class="df-cell"></div>
-            </div>
-            <div class="df-arrow">──── GET /pay/$5/{address} ────▶</div>
-            <div class="df-step">
-                <div class="df-cell"></div>
                 <div class="df-cell active-cyan">
                     <span class="df-label">HTTP 402</span>
-                    <span contenteditable="false">回傳 X-Payment-Required</span>
+                    <span contenteditable="false">Agent 簽署 USDC (EIP-3009)</span>
                 </div>
                 <div class="df-cell"></div>
             </div>
-            <div class="df-arrow">◀──── 私鑰簽署 USDC (EIP-3009) ────</div>
+            <div class="df-arrow">──── 帶 X-Payment 重送 ────▶</div>
             <div class="df-step">
-                <div class="df-cell active">
-                    <span style="color: var(--text-dim);" contenteditable="false">帶 X-Payment header 重送</span>
-                </div>
+                <div class="df-cell"></div>
                 <div class="df-cell active-cyan">
-                    <span class="df-label">驗證簽名</span>
-                    <span contenteditable="false">提交鏈上交易</span>
+                    <span class="df-label">驗證 + 提交交易</span>
                 </div>
                 <div class="df-cell active-warm">
-                    <span class="df-label">USDC 轉帳</span>
-                    <span contenteditable="false">Base 鏈上確認</span>
+                    <span class="df-label">USDC 結算</span>
+                    <span contenteditable="false">Credits +$5</span>
                 </div>
             </div>
-            <div class="df-arrow">◀──── Credits +$5 入帳 ────</div>
 
             <div class="df-divider"></div>
 
@@ -2935,7 +2924,7 @@
     'use strict';
 
     // ===== CONSTANTS =====
-    const TOTAL_SLIDES = 12;
+    const TOTAL_SLIDES = 13;
     const STORAGE_KEY = 'conway-blueprint-edits';
     const EDIT_HOVER_DELAY = 400;
 
