@@ -2331,10 +2331,47 @@
 
             <div class="df-divider"></div>
 
-            <!-- Step 4: Expose Port -->
+            <!-- Step 4: Credits insufficient → x402 topup via USDC -->
             <div class="df-step">
                 <div class="df-cell active">
                     <span class="df-step-num">04</span>
+                    <span contenteditable="false">Turn 開始偵測 Credits 不足</span><br>
+                    <span style="color: var(--text-dim);" contenteditable="false">自動觸發 bootstrapTopup()</span>
+                </div>
+                <div class="df-cell"></div>
+                <div class="df-cell"></div>
+            </div>
+            <div class="df-arrow">──── GET /pay/$5/{address} ────▶</div>
+            <div class="df-step">
+                <div class="df-cell"></div>
+                <div class="df-cell active-cyan">
+                    <span class="df-label">HTTP 402</span>
+                    <span contenteditable="false">回傳 X-Payment-Required</span>
+                </div>
+                <div class="df-cell"></div>
+            </div>
+            <div class="df-arrow">◀──── 私鑰簽署 USDC (EIP-3009) ────</div>
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span style="color: var(--text-dim);" contenteditable="false">帶 X-Payment header 重送</span>
+                </div>
+                <div class="df-cell active-cyan">
+                    <span class="df-label">驗證簽名</span>
+                    <span contenteditable="false">提交鏈上交易</span>
+                </div>
+                <div class="df-cell active-warm">
+                    <span class="df-label">USDC 轉帳</span>
+                    <span contenteditable="false">Base 鏈上確認</span>
+                </div>
+            </div>
+            <div class="df-arrow">◀──── Credits +$5 入帳 ────</div>
+
+            <div class="df-divider"></div>
+
+            <!-- Step 5: Expose Port -->
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span class="df-step-num">05</span>
                     <span class="mono" contenteditable="false">expose_port(3000)</span>
                 </div>
                 <div class="df-cell active-cyan">
@@ -2346,10 +2383,10 @@
 
             <div class="df-divider"></div>
 
-            <!-- Step 5: Persist + Report -->
+            <!-- Step 6: Persist + Report -->
             <div class="df-step">
                 <div class="df-cell active">
-                    <span class="df-step-num">05</span>
+                    <span class="df-step-num">06</span>
                     <span contenteditable="false">寫入 turns 表 · 更新 memory</span><br>
                     <span style="color: var(--text-dim);" contenteditable="false">SOUL.md:「已部署第一個網站」</span>
                 </div>
@@ -2361,7 +2398,7 @@
         <!-- Summary insight -->
         <div class="insight-box anim-fade mt-sm" style="transition-delay: 0.35s;">
             <p style="font-size: var(--body-size);" contenteditable="false">
-                <strong class="highlight">5 個 Turn</strong> — 涵蓋<strong>推理</strong>、<strong>執行</strong>、<strong class="warm">付費</strong>三大核心。完成後回到 ReAct 循環等待下一個任務。
+                <strong class="highlight">6 步完整流程</strong> — 涵蓋<strong>推理</strong>、<strong>執行</strong>、<strong class="cyan">x402 補充 Credits</strong>、<strong class="warm">鏈上結算</strong>四大核心。完成後回到 ReAct 循環。
             </p>
         </div>
     </div>
