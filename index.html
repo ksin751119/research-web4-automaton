@@ -1992,7 +1992,7 @@
 <nav id="nav-dots"></nav>
 
 <!-- Slide Counter -->
-<div id="slide-counter"><span id="current-slide">01</span> / 12</div>
+<div id="slide-counter"><span id="current-slide">01</span> / 13</div>
 
 <!-- Edit Mode -->
 <div id="edit-hotzone"></div>
@@ -3167,8 +3167,8 @@
     };
 
     function getSlideColor(n) {
-        if (n === 8 || n === 10) return slideColors.warm;
-        if (n === 9 || n === 11) return slideColors.cyan;
+        if (n === 9 || n === 11) return slideColors.warm;
+        if (n === 10 || n === 12) return slideColors.cyan;
         return slideColors.default;
     }
 
@@ -3263,7 +3263,7 @@
 
     // ===== FEATURE 10: TYPEWRITER EFFECT =====
     if (!prefersReducedMotion) {
-        const jsonPreview = document.querySelector('#slide-9 .json-preview');
+        const jsonPreview = document.querySelector('#slide-10 .json-preview');
         let typewriterDone = false;
 
         if (jsonPreview) {
@@ -3315,7 +3315,7 @@
                 });
             }, { threshold: 0.5 });
 
-            const slide9 = document.getElementById('slide-9');
+            const slide9 = document.getElementById('slide-10');
             if (slide9) typewriterObserver.observe(slide9);
         }
     }
@@ -3366,7 +3366,7 @@
                 });
             }, { threshold: 0.3 });
 
-            const slide8 = document.getElementById('slide-8');
+            const slide8 = document.getElementById('slide-9');
             if (slide8) glitchObserver.observe(slide8);
         }
     }
@@ -3452,8 +3452,8 @@
         }, { threshold: 0.5 });
 
         // Observe slides that contain counters (5 and 7)
-        const slide5 = document.getElementById('slide-5');
-        const slide7 = document.getElementById('slide-7');
+        const slide5 = document.getElementById('slide-6');
+        const slide7 = document.getElementById('slide-8');
         if (slide5) counterObserver.observe(slide5);
         if (slide7) counterObserver.observe(slide7);
     }
