@@ -2255,16 +2255,16 @@
 
         <!-- 3-Column Header: Local Agent / Conway Cloud / Blockchain -->
         <div class="dataflow-header anim-scale" style="transition-delay: 0.12s;">
-            <div class="diagram-node" style="min-width: 0;">
-                <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F5A5;</div>
+            <div class="diagram-node">
+                <div class="icon">&#x1F5A5;</div>
                 <div class="node-title" contenteditable="false">Local Agent</div>
             </div>
-            <div class="diagram-node node-cyan" style="min-width: 0;">
-                <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x2601;</div>
+            <div class="diagram-node node-cyan">
+                <div class="icon">&#x2601;</div>
                 <div class="node-title" contenteditable="false">Conway Cloud</div>
             </div>
-            <div class="diagram-node node-warm" style="min-width: 0;">
-                <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x26D3;</div>
+            <div class="diagram-node node-warm">
+                <div class="icon">&#x26D3;</div>
                 <div class="node-title" contenteditable="false">Blockchain</div>
             </div>
         </div>
@@ -2298,7 +2298,7 @@
             <div class="df-step">
                 <div class="df-cell active">
                     <span class="df-step-num">02</span>
-                    <span style="font-family: var(--font-mono);" contenteditable="false">exec("npx create-next-app")</span><br>
+                    <span class="mono" contenteditable="false">exec("npx create-next-app")</span><br>
                     <span style="color: var(--text-dim);" contenteditable="false">Policy Engine ✓</span>
                 </div>
                 <div class="df-cell"></div>
@@ -2320,7 +2320,7 @@
             <div class="df-step">
                 <div class="df-cell active">
                     <span class="df-step-num">03</span>
-                    <span style="font-family: var(--font-mono);" contenteditable="false">register_domain("bob.conway.tech")</span>
+                    <span class="mono" contenteditable="false">register_domain("bob.conway.tech")</span>
                 </div>
                 <div class="df-cell active-cyan">
                     <span class="df-label">扣 Credits</span>
@@ -2338,7 +2338,7 @@
             <div class="df-step">
                 <div class="df-cell active">
                     <span class="df-step-num">04</span>
-                    <span style="font-family: var(--font-mono);" contenteditable="false">expose_port(3000)</span>
+                    <span class="mono" contenteditable="false">expose_port(3000)</span>
                 </div>
                 <div class="df-cell active-cyan">
                     <span class="df-label">反向代理</span>
@@ -3451,7 +3451,7 @@
             });
         }, { threshold: 0.5 });
 
-        // Observe slides that contain counters (5 and 7)
+        // Observe slides that contain counters (6 and 8)
         const slide5 = document.getElementById('slide-6');
         const slide7 = document.getElementById('slide-8');
         if (slide5) counterObserver.observe(slide5);
