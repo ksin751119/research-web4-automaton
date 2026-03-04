@@ -1,0 +1,3267 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway Automaton — 第一個自給自足的 AI Agent | Blueprint Studio</title>
+
+    <!-- Fonts: Inter (display/body), IBM Plex Mono (mono), Noto Sans TC (Chinese) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — BLUEPRINT STUDIO THEME
+           =========================================== */
+        :root {
+            /* Colors — Blueprint dark palette */
+            --bg-primary: #0c1220;
+            --bg-secondary: #111827;
+            --bg-tertiary: #162033;
+            --bg-card: rgba(56, 152, 255, 0.06);
+            --bg-card-hover: rgba(56, 152, 255, 0.12);
+            --border: rgba(56, 152, 255, 0.20);
+            --border-light: rgba(56, 152, 255, 0.10);
+            --border-active: rgba(56, 152, 255, 0.45);
+            --text-primary: #e8edf5;
+            --text-secondary: #8899b4;
+            --text-dim: #5a6a82;
+            --accent: #3898ff;
+            --accent-warm: #ff8a3d;
+            --accent-cyan: #00d4ff;
+            --accent-green: #34d399;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --accent-glow: rgba(56, 152, 255, 0.15);
+            --glow-strong: rgba(56, 152, 255, 0.25);
+
+            /* Typography — MUCH BIGGER as requested */
+            --font-display: 'Inter', 'Noto Sans TC', sans-serif;
+            --font-body: 'Inter', 'Noto Sans TC', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+
+            --title-size: clamp(3.5rem, 9vw, 7rem);
+            --h2-size: clamp(2.2rem, 5vw, 4rem);
+            --h3-size: clamp(1.5rem, 2.8vw, 2.2rem);
+            --body-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            --small-size: clamp(0.8rem, 1.1vw, 1rem);
+            --label-size: clamp(0.95rem, 1.4vw, 1.2rem);
+
+            /* Spacing */
+            --slide-padding: clamp(1.5rem, 4vw, 4.5rem);
+            --content-gap: clamp(0.8rem, 2vw, 2rem);
+            --element-gap: clamp(0.4rem, 1vw, 0.8rem);
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-apple: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --duration: 0.7s;
+
+            /* Blueprint grid sizes */
+            --grid-major: 100px;
+            --grid-minor: 20px;
+        }
+
+        /* ===========================================
+           RESET & BASE
+           =========================================== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100%;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            height: 100%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        /* Blueprint grid background — fixed, covers everything */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            /* Minor grid 20px */
+            background-image:
+                linear-gradient(rgba(56, 152, 255, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 152, 255, 0.06) 1px, transparent 1px),
+                /* Major grid 100px */
+                linear-gradient(rgba(56, 152, 255, 0.12) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 152, 255, 0.12) 1px, transparent 1px);
+            background-size:
+                var(--grid-minor) var(--grid-minor),
+                var(--grid-minor) var(--grid-minor),
+                var(--grid-major) var(--grid-major),
+                var(--grid-major) var(--grid-major);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===========================================
+           SLIDE CONTAINER — VIEWPORT FITTING
+           =========================================== */
+        .slide {
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: var(--slide-padding);
+            z-index: 1;
+        }
+
+        .slide-inner {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Gradient orb decorations */
+        .slide::before {
+            content: '';
+            position: absolute;
+            width: clamp(300px, 50vw, 700px);
+            height: clamp(300px, 50vw, 700px);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56, 152, 255, 0.08), transparent 70%);
+            top: -20%;
+            right: -10%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .slide:nth-child(even)::before {
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.06), transparent 70%);
+            top: auto;
+            bottom: -20%;
+            left: -10%;
+            right: auto;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        .slide-title {
+            font-size: var(--title-size);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #e8edf5, #3898ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--content-gap);
+        }
+
+        h2 {
+            font-size: var(--h2-size);
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            margin-bottom: var(--content-gap);
+        }
+
+        h2 .accent {
+            color: var(--accent);
+            -webkit-text-fill-color: var(--accent);
+        }
+
+        h3 {
+            font-size: var(--h3-size);
+            font-weight: 600;
+            line-height: 1.25;
+            color: var(--text-primary);
+            margin-bottom: var(--element-gap);
+        }
+
+        p, li {
+            font-size: var(--body-size);
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+
+        .label {
+            font-size: var(--label-size);
+            color: var(--text-secondary);
+        }
+
+        .mono {
+            font-family: var(--font-mono);
+        }
+
+        .small {
+            font-size: var(--small-size);
+        }
+
+        .subtitle {
+            font-size: var(--h3-size);
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-bottom: var(--content-gap);
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: var(--small-size);
+            font-weight: 600;
+            color: var(--accent);
+            background: rgba(56, 152, 255, 0.12);
+            border: 1px solid rgba(56, 152, 255, 0.25);
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        strong, b {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .warm {
+            color: var(--accent-warm);
+        }
+
+        .cyan {
+            color: var(--accent-cyan);
+        }
+
+        /* ===========================================
+           GLASS-MORPHISM CARDS
+           =========================================== */
+        .glass-card {
+            background: rgba(56, 152, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(56, 152, 255, 0.18);
+            border-radius: 12px;
+            padding: clamp(0.8rem, 1.8vw, 1.5rem);
+            box-shadow: 0 0 20px rgba(56, 152, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.04);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(56, 152, 255, 0.35);
+            box-shadow: 0 0 30px rgba(56, 152, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .glass-card-warm {
+            background: rgba(255, 138, 61, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 138, 61, 0.18);
+            border-radius: 12px;
+            padding: clamp(0.8rem, 1.8vw, 1.5rem);
+            box-shadow: 0 0 20px rgba(255, 138, 61, 0.08);
+        }
+
+        .glass-card-cyan {
+            background: rgba(0, 212, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(0, 212, 255, 0.18);
+            border-radius: 12px;
+            padding: clamp(0.8rem, 1.8vw, 1.5rem);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.08);
+        }
+
+        /* ===========================================
+           DIAGRAM NODES — MORE PROMINENT
+           =========================================== */
+        .diagram-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: rgba(56, 152, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2.5px solid rgba(56, 152, 255, 0.30);
+            border-radius: 14px;
+            padding: clamp(0.8rem, 1.6vw, 1.4rem) clamp(1rem, 2vw, 1.8rem);
+            box-shadow: 0 0 20px rgba(56, 152, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.05);
+            min-width: clamp(100px, 15vw, 180px);
+            transition: all 0.3s ease;
+        }
+
+        .diagram-node:hover {
+            border-color: rgba(56, 152, 255, 0.5);
+            box-shadow: 0 0 35px rgba(56, 152, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .diagram-node .icon {
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            margin-bottom: 0.3em;
+            filter: drop-shadow(0 0 8px rgba(56, 152, 255, 0.4));
+        }
+
+        .diagram-node .node-title {
+            font-size: var(--label-size);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.15em;
+        }
+
+        .diagram-node .node-desc {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            line-height: 1.3;
+        }
+
+        .diagram-node.node-warm {
+            background: rgba(255, 138, 61, 0.08);
+            border-color: rgba(255, 138, 61, 0.30);
+            box-shadow: 0 0 20px rgba(255, 138, 61, 0.20);
+        }
+
+        .diagram-node.node-cyan {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.30);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.20);
+        }
+
+        /* ===========================================
+           CSS ARROW CONNECTORS — PROMINENT
+           =========================================== */
+        .connector {
+            display: flex;
+            align-items: center;
+            position: relative;
+            min-width: clamp(40px, 6vw, 80px);
+        }
+
+        .connector .line {
+            flex: 1;
+            height: 2.5px;
+            background: linear-gradient(90deg, rgba(56,152,255,0.2), #3898ff, rgba(56,152,255,0.2));
+            position: relative;
+            box-shadow: 0 0 8px rgba(56, 152, 255, 0.3);
+        }
+
+        .connector .line::after {
+            content: '';
+            position: absolute;
+            right: -1px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-left: 10px solid #3898ff;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            filter: drop-shadow(0 0 4px rgba(56, 152, 255, 0.5));
+        }
+
+        /* Bidirectional */
+        .connector.bidi .line::before {
+            content: '';
+            position: absolute;
+            left: -1px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-right: 10px solid #3898ff;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            filter: drop-shadow(0 0 4px rgba(56, 152, 255, 0.5));
+        }
+
+        .connector .conn-label {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: var(--small-size);
+            color: var(--accent);
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        /* Vertical connector */
+        .connector-v {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            min-height: clamp(25px, 4vh, 50px);
+        }
+
+        .connector-v .line-v {
+            flex: 1;
+            width: 2.5px;
+            background: linear-gradient(180deg, rgba(56,152,255,0.2), #3898ff, rgba(56,152,255,0.2));
+            position: relative;
+            box-shadow: 0 0 8px rgba(56, 152, 255, 0.3);
+        }
+
+        .connector-v .line-v::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-top: 10px solid #3898ff;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            filter: drop-shadow(0 0 4px rgba(56, 152, 255, 0.5));
+        }
+
+        /* Connector - warm color variant */
+        .connector-warm .line {
+            background: linear-gradient(90deg, rgba(255,138,61,0.2), #ff8a3d, rgba(255,138,61,0.2));
+            box-shadow: 0 0 8px rgba(255, 138, 61, 0.3);
+        }
+        .connector-warm .line::after {
+            border-left-color: #ff8a3d;
+        }
+        .connector-warm.bidi .line::before {
+            border-right-color: #ff8a3d;
+        }
+
+        /* Connector - cyan variant */
+        .connector-cyan .line {
+            background: linear-gradient(90deg, rgba(0,212,255,0.2), #00d4ff, rgba(0,212,255,0.2));
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+        }
+        .connector-cyan .line::after {
+            border-left-color: #00d4ff;
+        }
+
+        /* ===========================================
+           FLOW ROWS & LAYOUTS
+           =========================================== */
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+
+        .flow-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--content-gap);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--content-gap);
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--element-gap);
+        }
+
+        .flex-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gap-sm { gap: var(--element-gap); }
+        .gap-md { gap: var(--content-gap); }
+
+        /* ===========================================
+           STACKED LAYERS (Policy Engine)
+           =========================================== */
+        .layer-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .layer-bar {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.5rem, 1.2vw, 1rem);
+            padding: clamp(0.4rem, 0.8vh, 0.7rem) clamp(0.8rem, 1.5vw, 1.2rem);
+            border-radius: 8px;
+            border: 2px solid rgba(56, 152, 255, 0.20);
+            background: rgba(56, 152, 255, 0.04);
+            font-size: var(--label-size);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 12px rgba(56, 152, 255, 0.08);
+        }
+
+        .layer-bar:hover {
+            border-color: rgba(56, 152, 255, 0.4);
+            box-shadow: 0 0 25px rgba(56, 152, 255, 0.2);
+        }
+
+        .layer-bar .layer-id {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 2.5em;
+            font-size: var(--label-size);
+        }
+
+        .layer-bar .layer-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .layer-bar .layer-desc {
+            color: var(--text-secondary);
+            font-size: var(--small-size);
+        }
+
+        /* ===========================================
+           TIER BARS (Survival)
+           =========================================== */
+        .tier-bar {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            padding: clamp(0.5rem, 1vh, 0.8rem) clamp(1rem, 2vw, 1.5rem);
+            border-radius: 10px;
+            border-left: 4px solid;
+            background: rgba(255,255,255,0.02);
+            font-size: var(--label-size);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .tier-bar .tier-name {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            min-width: clamp(80px, 10vw, 120px);
+        }
+
+        .tier-bar .tier-credits {
+            font-weight: 600;
+            min-width: clamp(60px, 8vw, 100px);
+            text-align: center;
+        }
+
+        .tier-bar .tier-desc {
+            color: var(--text-secondary);
+            flex: 1;
+            font-size: var(--small-size);
+        }
+
+        .tier-green { border-color: var(--accent-green); }
+        .tier-green .tier-name { color: var(--accent-green); }
+        .tier-blue { border-color: var(--accent); }
+        .tier-blue .tier-name { color: var(--accent); }
+        .tier-amber { border-color: var(--accent-amber); }
+        .tier-amber .tier-name { color: var(--accent-amber); }
+        .tier-orange { border-color: var(--accent-warm); }
+        .tier-orange .tier-name { color: var(--accent-warm); }
+        .tier-red { border-color: var(--accent-red); }
+        .tier-red .tier-name { color: var(--accent-red); }
+
+        /* ===========================================
+           RISK BADGES
+           =========================================== */
+        .risk-safe { color: var(--accent-green); border-color: rgba(52, 211, 153, 0.3); background: rgba(52, 211, 153, 0.08); }
+        .risk-caution { color: var(--accent-amber); border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.08); }
+        .risk-dangerous { color: var(--accent-warm); border-color: rgba(255, 138, 61, 0.3); background: rgba(255, 138, 61, 0.08); }
+        .risk-forbidden { color: var(--accent-red); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.08); }
+
+        .badge {
+            display: inline-block;
+            font-size: var(--small-size);
+            font-weight: 600;
+            padding: 0.1em 0.6em;
+            border-radius: 4px;
+            border: 1.5px solid;
+            font-family: var(--font-mono);
+        }
+
+        /* ===========================================
+           TOOL GRID
+           =========================================== */
+        .tool-cell {
+            background: rgba(56, 152, 255, 0.04);
+            border: 1.5px solid rgba(56, 152, 255, 0.15);
+            border-radius: 8px;
+            padding: clamp(0.3rem, 0.6vw, 0.5rem) clamp(0.5rem, 0.8vw, 0.7rem);
+            text-align: center;
+            font-size: var(--small-size);
+            transition: all 0.25s ease;
+        }
+
+        .tool-cell:hover {
+            border-color: rgba(56, 152, 255, 0.4);
+            box-shadow: 0 0 15px rgba(56, 152, 255, 0.15);
+        }
+
+        .tool-cell .tool-name {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: var(--accent);
+            font-size: var(--small-size);
+        }
+
+        .tool-cell .tool-count {
+            color: var(--text-secondary);
+            font-size: var(--small-size);
+        }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-cyan));
+            z-index: 9999;
+            transition: width 0.35s var(--ease-out-expo);
+            box-shadow: 0 0 10px rgba(56, 152, 255, 0.5);
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        #nav-dots {
+            position: fixed;
+            right: clamp(0.8rem, 2vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 9998;
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(56, 152, 255, 0.2);
+            border: 1.5px solid rgba(56, 152, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot:hover {
+            background: rgba(56, 152, 255, 0.4);
+            transform: scale(1.3);
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 8px rgba(56, 152, 255, 0.5);
+            transform: scale(1.2);
+        }
+
+        /* ===========================================
+           SLIDE COUNTER
+           =========================================== */
+        #slide-counter {
+            position: fixed;
+            bottom: clamp(0.8rem, 2vh, 1.5rem);
+            right: clamp(0.8rem, 2vw, 1.5rem);
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--text-dim);
+            z-index: 9998;
+            background: rgba(12, 18, 32, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 0.3em 0.8em;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 152, 255, 0.15);
+        }
+
+        /* ===========================================
+           ANIMATIONS (IntersectionObserver driven)
+           =========================================== */
+        .anim-fade {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity var(--duration) var(--ease-out-expo), transform var(--duration) var(--ease-out-expo);
+        }
+
+        .anim-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .anim-scale {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity var(--duration) var(--ease-out-expo), transform var(--duration) var(--ease-out-expo);
+        }
+
+        .anim-scale.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .anim-left {
+            opacity: 0;
+            transform: translateX(-40px);
+            transition: opacity var(--duration) var(--ease-out-expo), transform var(--duration) var(--ease-out-expo);
+        }
+
+        .anim-left.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .anim-right {
+            opacity: 0;
+            transform: translateX(40px);
+            transition: opacity var(--duration) var(--ease-out-expo), transform var(--duration) var(--ease-out-expo);
+        }
+
+        .anim-right.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Staggered children */
+        .stagger > * { transition-delay: calc(var(--i, 0) * 0.08s); }
+
+        /* ===========================================
+           ELEGANT ANIMATIONS — ENHANCED
+           =========================================== */
+
+        /* --- 1. Connector Pulse — light traveling along lines --- */
+        @keyframes connectorPulse {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .connector .line::before,
+        .visible .connector .line,
+        .anim-scale.visible .connector .line {
+            background-size: 200% 100%;
+        }
+
+        .anim-scale.visible .connector .line,
+        .anim-fade.visible ~ .connector .line,
+        .flow-row .connector .line {
+            animation: connectorPulse 3s var(--ease-apple) infinite;
+            background: linear-gradient(
+                90deg,
+                rgba(56, 152, 255, 0.15) 0%,
+                rgba(56, 152, 255, 0.15) 35%,
+                #3898ff 50%,
+                rgba(56, 152, 255, 0.15) 65%,
+                rgba(56, 152, 255, 0.15) 100%
+            );
+            background-size: 200% 100%;
+        }
+
+        .connector-warm .line {
+            animation: connectorPulseWarm 3s var(--ease-apple) infinite !important;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 138, 61, 0.15) 0%,
+                rgba(255, 138, 61, 0.15) 35%,
+                #ff8a3d 50%,
+                rgba(255, 138, 61, 0.15) 65%,
+                rgba(255, 138, 61, 0.15) 100%
+            ) !important;
+            background-size: 200% 100% !important;
+        }
+
+        @keyframes connectorPulseWarm {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .connector-cyan .line {
+            animation: connectorPulseCyan 3s var(--ease-apple) infinite !important;
+            background: linear-gradient(
+                90deg,
+                rgba(0, 212, 255, 0.15) 0%,
+                rgba(0, 212, 255, 0.15) 35%,
+                #00d4ff 50%,
+                rgba(0, 212, 255, 0.15) 65%,
+                rgba(0, 212, 255, 0.15) 100%
+            ) !important;
+            background-size: 200% 100% !important;
+        }
+
+        @keyframes connectorPulseCyan {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        /* Vertical connector pulse */
+        @keyframes connectorPulseV {
+            0% { background-position: center -200%; }
+            100% { background-position: center 200%; }
+        }
+
+        .connector-v .line-v {
+            animation: connectorPulseV 2.5s var(--ease-apple) infinite;
+            background: linear-gradient(
+                180deg,
+                rgba(56, 152, 255, 0.15) 0%,
+                rgba(56, 152, 255, 0.15) 35%,
+                #3898ff 50%,
+                rgba(56, 152, 255, 0.15) 65%,
+                rgba(56, 152, 255, 0.15) 100%
+            );
+            background-size: 100% 200%;
+        }
+
+        /* --- 3. Corner Mark Draw-In --- */
+        @keyframes cornerDrawTL {
+            0% { width: 0; height: 0; opacity: 0; }
+            50% { opacity: 1; }
+            100% { width: 20px; height: 20px; opacity: 1; }
+        }
+
+        .slide .corner-mark {
+            opacity: 0;
+            transition: none;
+        }
+
+        .slide.slide-visible .corner-mark {
+            animation: cornerDrawTL 0.6s var(--ease-out-expo) forwards;
+        }
+
+        .slide.slide-visible .corner-mark.tl { animation-delay: 0s; }
+        .slide.slide-visible .corner-mark.tr { animation-delay: 0.1s; }
+        .slide.slide-visible .corner-mark.br { animation-delay: 0.2s; }
+        .slide.slide-visible .corner-mark.bl { animation-delay: 0.3s; }
+
+        /* --- 4. Title Gradient Shimmer --- */
+        @keyframes gradientShimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .slide-title {
+            background: linear-gradient(
+                135deg,
+                #e8edf5 0%,
+                #3898ff 25%,
+                #00d4ff 50%,
+                #3898ff 75%,
+                #e8edf5 100%
+            );
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: gradientShimmer 6s ease-in-out infinite;
+        }
+
+        /* --- 5. Glass Card Hover — Lift + Glow --- */
+        .glass-card,
+        .glass-card-warm,
+        .glass-card-cyan {
+            transition: border-color 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(56, 152, 255, 0.45);
+            box-shadow: 0 8px 40px rgba(56, 152, 255, 0.18), 0 0 30px rgba(56, 152, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .glass-card-warm:hover {
+            border-color: rgba(255, 138, 61, 0.4);
+            box-shadow: 0 8px 40px rgba(255, 138, 61, 0.15), 0 0 30px rgba(255, 138, 61, 0.1);
+        }
+
+        .glass-card-cyan:hover {
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 8px 40px rgba(0, 212, 255, 0.15), 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        /* --- 6. Active Nav Dot Pulse Ring --- */
+        @keyframes dotPulse {
+            0% { transform: scale(1.2); box-shadow: 0 0 0 0 rgba(56, 152, 255, 0.5); }
+            70% { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(56, 152, 255, 0); }
+            100% { transform: scale(1.2); box-shadow: 0 0 0 0 rgba(56, 152, 255, 0); }
+        }
+
+        .nav-dot.active {
+            animation: dotPulse 2.5s ease-in-out infinite;
+        }
+
+        /* --- 7. Seq Step Sequential Reveal --- */
+        .seq-flow .seq-step {
+            opacity: 0;
+            transform: translateX(-15px);
+            transition: opacity 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
+        }
+
+        .seq-flow .connector-v {
+            opacity: 0;
+            transform: scaleY(0);
+            transform-origin: top;
+            transition: opacity 0.3s ease, transform 0.4s var(--ease-out-expo);
+        }
+
+        .anim-fade.visible .seq-flow .seq-step,
+        .seq-flow.seq-revealed .seq-step {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .anim-fade.visible .seq-flow .connector-v,
+        .seq-flow.seq-revealed .connector-v {
+            opacity: 1;
+            transform: scaleY(1);
+        }
+
+        /* Stagger seq steps */
+        .seq-flow > :nth-child(1) { transition-delay: 0.05s; }
+        .seq-flow > :nth-child(2) { transition-delay: 0.15s; }
+        .seq-flow > :nth-child(3) { transition-delay: 0.25s; }
+        .seq-flow > :nth-child(4) { transition-delay: 0.35s; }
+        .seq-flow > :nth-child(5) { transition-delay: 0.45s; }
+        .seq-flow > :nth-child(6) { transition-delay: 0.55s; }
+        .seq-flow > :nth-child(7) { transition-delay: 0.65s; }
+        .seq-flow > :nth-child(8) { transition-delay: 0.75s; }
+        .seq-flow > :nth-child(9) { transition-delay: 0.85s; }
+        .seq-flow > :nth-child(10) { transition-delay: 0.95s; }
+
+        /* --- 8. Progress Bar Shimmer --- */
+        @keyframes progressShimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        #progress-bar {
+            background: linear-gradient(
+                90deg,
+                var(--accent) 0%,
+                var(--accent-cyan) 30%,
+                #fff 50%,
+                var(--accent-cyan) 70%,
+                var(--accent) 100%
+            );
+            background-size: 200% 100%;
+            animation: progressShimmer 3s linear infinite;
+        }
+
+        /* --- 11. Tag Shimmer --- */
+        @keyframes tagShimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .tag {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tag::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(56, 152, 255, 0.15), transparent);
+            animation: tagShimmer 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        /* --- 12. Floating Orb Enhancement --- */
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(15px, -20px) scale(1.03); }
+            50% { transform: translate(-10px, -35px) scale(1.06); }
+            75% { transform: translate(20px, -15px) scale(1.02); }
+        }
+
+        .slide::before {
+            animation: orbFloat 12s ease-in-out infinite;
+        }
+
+        .slide:nth-child(even)::before {
+            animation: orbFloat 14s ease-in-out infinite reverse;
+        }
+
+        /* --- 14. Law Card Entrance with Tilt --- */
+        .law-card {
+            transition: box-shadow 0.4s ease;
+        }
+
+        .law-card.law-1:hover {
+            box-shadow: 0 12px 40px rgba(239, 68, 68, 0.25), 0 0 25px rgba(239, 68, 68, 0.15);
+        }
+
+        .law-card.law-2:hover {
+            box-shadow: 0 12px 40px rgba(56, 152, 255, 0.25), 0 0 25px rgba(56, 152, 255, 0.15);
+        }
+
+        .law-card.law-3:hover {
+            box-shadow: 0 12px 40px rgba(0, 212, 255, 0.25), 0 0 25px rgba(0, 212, 255, 0.15);
+        }
+
+        /* --- 15. JSON Preview Typing Cursor --- */
+        @keyframes cursorBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .json-preview::after {
+            content: '▌';
+            color: var(--accent);
+            opacity: 0.6;
+            animation: cursorBlink 1s step-end infinite;
+            font-size: var(--small-size);
+        }
+
+        /* --- 16. Question Card Hover Glow --- */
+        .question-card {
+            transition: box-shadow 0.4s ease, border-color 0.4s ease;
+        }
+
+        .question-card:hover {
+            border-color: rgba(56, 152, 255, 0.4);
+            box-shadow: 0 12px 50px rgba(56, 152, 255, 0.2), 0 0 30px rgba(56, 152, 255, 0.1);
+        }
+
+        .question-card:hover .q-num {
+            opacity: 0.6;
+            transition: opacity 0.4s ease;
+        }
+
+        /* --- 17. Security Band Hover Slide --- */
+        .security-band {
+            transition: box-shadow 0.3s ease, background 0.3s ease;
+        }
+
+        .security-band:hover {
+            background: rgba(56, 152, 255, 0.08);
+            box-shadow: -4px 0 20px rgba(56, 152, 255, 0.1);
+        }
+
+        .badge {
+            transition: box-shadow 0.25s ease;
+        }
+
+        .badge.risk-safe:hover { box-shadow: 0 0 12px rgba(52, 211, 153, 0.4); }
+        .badge.risk-caution:hover { box-shadow: 0 0 12px rgba(245, 158, 11, 0.4); }
+        .badge.risk-dangerous:hover { box-shadow: 0 0 12px rgba(255, 138, 61, 0.4); }
+        .badge.risk-forbidden:hover { box-shadow: 0 0 16px rgba(239, 68, 68, 0.5); }
+
+        /* --- 19. Tool Cell Hover Pop --- */
+        .tool-cell {
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .tool-cell:hover {
+            border-color: rgba(56, 152, 255, 0.5);
+            box-shadow: 0 6px 20px rgba(56, 152, 255, 0.2);
+        }
+
+        .tool-cell:hover .tool-name {
+            text-shadow: 0 0 10px rgba(56, 152, 255, 0.5);
+        }
+
+        /* --- 20. Loop Indicator Spin --- */
+        @keyframes loopSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loop-indicator::before {
+            content: '';
+            display: none;
+        }
+
+        .loop-indicator {
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .loop-indicator:hover {
+            border-color: rgba(56, 152, 255, 0.5);
+            box-shadow: 0 0 15px rgba(56, 152, 255, 0.2);
+        }
+
+        /* --- 21. Slide Number Watermark Fade-In --- */
+        .slide-num-watermark {
+            opacity: 0;
+            transition: opacity 0.8s ease 0.5s;
+        }
+
+        .slide.slide-visible .slide-num-watermark {
+            opacity: 0.5;
+        }
+
+        /* --- Reduced motion preference --- */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ===========================================
+           EDIT MODE
+           =========================================== */
+        #edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 60px;
+            height: 60px;
+            z-index: 10001;
+            cursor: pointer;
+        }
+
+        #edit-toggle {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 10002;
+            background: rgba(56, 152, 255, 0.15);
+            border: 1.5px solid rgba(56, 152, 255, 0.3);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #edit-toggle.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        body.edit-mode [contenteditable] {
+            outline: 1px dashed rgba(56, 152, 255, 0.4);
+            outline-offset: 2px;
+            cursor: text;
+        }
+
+        body.edit-mode [contenteditable]:focus {
+            outline-color: var(--accent);
+            background: rgba(56, 152, 255, 0.05);
+        }
+
+        #edit-panel {
+            position: fixed;
+            top: 12px;
+            left: 80px;
+            z-index: 10002;
+            display: none;
+            gap: 6px;
+        }
+
+        body.edit-mode #edit-panel {
+            display: flex;
+        }
+
+        .edit-btn {
+            background: rgba(56, 152, 255, 0.15);
+            border: 1.5px solid rgba(56, 152, 255, 0.3);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn:hover {
+            background: rgba(56, 152, 255, 0.25);
+            border-color: var(--accent);
+        }
+
+        /* ===========================================
+           RESPONSIVE BREAKPOINTS
+           =========================================== */
+        @media (max-height: 700px) {
+            :root {
+                --title-size: clamp(2.5rem, 7vw, 4.5rem);
+                --h2-size: clamp(1.8rem, 4vw, 3rem);
+                --h3-size: clamp(1.2rem, 2.2vw, 1.7rem);
+                --body-size: clamp(0.9rem, 1.5vw, 1.2rem);
+                --label-size: clamp(0.8rem, 1.2vw, 1rem);
+                --slide-padding: clamp(1rem, 3vw, 3rem);
+                --content-gap: clamp(0.5rem, 1.5vw, 1.2rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --title-size: clamp(2rem, 6vw, 3.5rem);
+                --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+                --h3-size: clamp(1rem, 2vw, 1.4rem);
+                --body-size: clamp(0.8rem, 1.3vw, 1.05rem);
+                --label-size: clamp(0.7rem, 1vw, 0.9rem);
+                --small-size: clamp(0.65rem, 0.9vw, 0.8rem);
+                --slide-padding: clamp(0.8rem, 2.5vw, 2rem);
+                --content-gap: clamp(0.3rem, 1vw, 0.8rem);
+                --element-gap: clamp(0.2rem, 0.6vw, 0.5rem);
+            }
+        }
+
+        @media (max-height: 500px) {
+            :root {
+                --title-size: clamp(1.6rem, 5vw, 2.8rem);
+                --h2-size: clamp(1.3rem, 3vw, 2rem);
+                --h3-size: clamp(0.9rem, 1.8vw, 1.2rem);
+                --body-size: clamp(0.7rem, 1.1vw, 0.9rem);
+                --label-size: clamp(0.65rem, 0.9vw, 0.8rem);
+                --small-size: clamp(0.6rem, 0.8vw, 0.7rem);
+                --slide-padding: clamp(0.6rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.2rem, 0.8vw, 0.6rem);
+            }
+            .diagram-node { padding: 0.5rem 0.8rem; min-width: 80px; }
+            .layer-bar { padding: 0.25rem 0.6rem; }
+            .tier-bar { padding: 0.3rem 0.8rem; }
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .grid-3 { grid-template-columns: 1fr; }
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+            .flow-row { flex-wrap: wrap; gap: var(--element-gap); }
+            .hide-mobile { display: none !important; }
+        }
+
+        /* ===========================================
+           SLIDE-SPECIFIC STYLES
+           =========================================== */
+
+        /* Slide 01 Title */
+        .slide-01 {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .slide-01 .slide-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Slide 02 Timeline */
+        .timeline-row {
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 0;
+            width: 100%;
+        }
+
+        .timeline-item {
+            flex: 1;
+            text-align: center;
+            padding: clamp(0.5rem, 1vw, 1rem);
+            max-width: 220px;
+        }
+
+        .timeline-item .era {
+            font-size: var(--h3-size);
+            font-weight: 800;
+            margin-bottom: 0.15em;
+        }
+
+        .timeline-item .era-name {
+            font-size: var(--label-size);
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.3em;
+        }
+
+        .timeline-item .era-desc {
+            font-size: var(--small-size);
+            color: var(--text-dim);
+        }
+
+        /* Web4 highlighted */
+        .timeline-item.web4 .era {
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(56, 152, 255, 0.4);
+        }
+
+        /* Key insight box */
+        .insight-box {
+            background: rgba(255, 138, 61, 0.06);
+            border: 2px solid rgba(255, 138, 61, 0.25);
+            border-radius: 10px;
+            padding: clamp(0.6rem, 1.2vw, 1rem) clamp(1rem, 2vw, 1.5rem);
+            margin-top: var(--content-gap);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* JSON preview */
+        .json-preview {
+            background: rgba(12, 18, 32, 0.8);
+            border: 2px solid rgba(56, 152, 255, 0.2);
+            border-radius: 10px;
+            padding: clamp(0.5rem, 1vw, 0.8rem) clamp(0.8rem, 1.5vw, 1.2rem);
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            line-height: 1.5;
+            color: var(--text-secondary);
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .json-preview .key { color: var(--accent-cyan); }
+        .json-preview .str { color: var(--accent-green); }
+        .json-preview .num { color: var(--accent-warm); }
+
+        /* Sequence flow */
+        .seq-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .seq-step {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.4rem, 0.8vw, 0.8rem);
+            padding: clamp(0.25rem, 0.5vh, 0.4rem) clamp(0.5rem, 1vw, 0.8rem);
+            border-radius: 6px;
+            font-size: var(--small-size);
+            background: rgba(56, 152, 255, 0.03);
+            border: 1px solid rgba(56, 152, 255, 0.1);
+        }
+
+        .seq-step .step-num {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 2em;
+            text-align: center;
+        }
+
+        /* Law cards */
+        .law-card {
+            border-radius: 12px;
+            padding: clamp(0.8rem, 1.5vw, 1.3rem);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .law-card.law-1 {
+            background: rgba(239, 68, 68, 0.06);
+            border: 2.5px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);
+        }
+
+        .law-card.law-2 {
+            background: rgba(56, 152, 255, 0.06);
+            border: 2.5px solid rgba(56, 152, 255, 0.3);
+            box-shadow: 0 0 25px rgba(56, 152, 255, 0.15);
+        }
+
+        .law-card.law-3 {
+            background: rgba(0, 212, 255, 0.06);
+            border: 2.5px solid rgba(0, 212, 255, 0.3);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.15);
+        }
+
+        .law-num {
+            font-family: var(--font-mono);
+            font-weight: 800;
+            font-size: var(--h3-size);
+            margin-bottom: 0.2em;
+        }
+
+        .law-card.law-1 .law-num { color: var(--accent-red); }
+        .law-card.law-2 .law-num { color: var(--accent); }
+        .law-card.law-3 .law-num { color: var(--accent-cyan); }
+
+        /* Security bands */
+        .security-band {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            padding: clamp(0.4rem, 0.8vh, 0.7rem) clamp(0.8rem, 1.5vw, 1.2rem);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+            background: rgba(56, 152, 255, 0.04);
+            font-size: var(--label-size);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .security-band .band-icon {
+            font-size: clamp(1.2rem, 2vw, 1.6rem);
+        }
+
+        .security-band .band-name {
+            font-weight: 700;
+            color: var(--text-primary);
+            min-width: clamp(60px, 8vw, 100px);
+        }
+
+        .security-band .band-items {
+            color: var(--text-secondary);
+            font-size: var(--small-size);
+            flex: 1;
+        }
+
+        /* Cycle loop indicator */
+        .loop-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4em;
+            font-size: var(--small-size);
+            color: var(--accent);
+            font-weight: 600;
+            padding: 0.2em 0.8em;
+            border: 1.5px solid rgba(56, 152, 255, 0.3);
+            border-radius: 20px;
+            background: rgba(56, 152, 255, 0.08);
+        }
+
+        /* Pillar markers */
+        .pillar-marker {
+            text-align: center;
+            padding: clamp(0.3rem, 0.6vw, 0.5rem);
+        }
+
+        .pillar-marker .pillar-icon {
+            font-size: clamp(1.5rem, 2.5vw, 2rem);
+            margin-bottom: 0.2em;
+        }
+
+        .pillar-marker .pillar-name {
+            font-size: var(--label-size);
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Discussion questions */
+        .question-card {
+            background: rgba(56, 152, 255, 0.05);
+            border: 2px solid rgba(56, 152, 255, 0.2);
+            border-radius: 12px;
+            padding: clamp(1rem, 2vw, 2rem);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 0 20px rgba(56, 152, 255, 0.1);
+        }
+
+        .question-card .q-num {
+            font-family: var(--font-mono);
+            font-weight: 800;
+            font-size: var(--h2-size);
+            color: var(--accent);
+            opacity: 0.3;
+            line-height: 1;
+        }
+
+        .question-card .q-text {
+            font-size: var(--h3-size);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 0.3em;
+        }
+
+        /* Spacing utilities */
+        .mb-xs { margin-bottom: clamp(0.2rem, 0.4vw, 0.3rem); }
+        .mb-sm { margin-bottom: var(--element-gap); }
+        .mb-md { margin-bottom: var(--content-gap); }
+        .mt-sm { margin-top: var(--element-gap); }
+        .mt-md { margin-top: var(--content-gap); }
+
+        /* Horizontal line */
+        .divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(56, 152, 255, 0.2), transparent);
+            margin: var(--element-gap) 0;
+        }
+
+        /* Blueprint corner marks on each slide */
+        .slide .corner-mark {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: rgba(56, 152, 255, 0.2);
+            border-style: solid;
+            z-index: 1;
+        }
+        .slide .corner-mark.tl { top: 15px; left: 15px; border-width: 2px 0 0 2px; }
+        .slide .corner-mark.tr { top: 15px; right: 15px; border-width: 2px 2px 0 0; }
+        .slide .corner-mark.bl { bottom: 15px; left: 15px; border-width: 0 0 2px 2px; }
+        .slide .corner-mark.br { bottom: 15px; right: 15px; border-width: 0 2px 2px 0; }
+
+        /* Slide number watermark */
+        .slide-num-watermark {
+            position: absolute;
+            bottom: clamp(0.5rem, 1.5vh, 1rem);
+            left: clamp(0.8rem, 2vw, 1.5rem);
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--text-dim);
+            opacity: 0.5;
+            z-index: 1;
+        }
+
+        /* Wrap text */
+        .text-balance { text-wrap: balance; }
+
+        /* ===========================================
+           FEATURE 1: CURSOR AURA
+           =========================================== */
+        #cursor-aura {
+            position: fixed;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56, 152, 255, 0.12) 0%, transparent 70%);
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 9990;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            will-change: transform;
+        }
+        #cursor-aura.active { opacity: 1; }
+        @media (hover: none) {
+            #cursor-aura { display: none; }
+        }
+
+        /* ===========================================
+           FEATURE 2: PARTICLE CANVAS
+           =========================================== */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ===========================================
+           FEATURE 3: CIRCUIT OVERLAY
+           =========================================== */
+        #circuit-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.35;
+            transition: transform 0.8s var(--ease-out-expo);
+            background:
+                /* horizontal circuit traces */
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 198px,
+                    rgba(56, 152, 255, 0.04) 198px,
+                    rgba(56, 152, 255, 0.04) 200px
+                ),
+                /* vertical circuit traces */
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 298px,
+                    rgba(56, 152, 255, 0.03) 298px,
+                    rgba(56, 152, 255, 0.03) 300px
+                ),
+                /* circuit junction dots */
+                radial-gradient(circle 1.5px at 200px 200px, rgba(56, 152, 255, 0.12) 100%, transparent 100%),
+                radial-gradient(circle 1.5px at 100px 300px, rgba(0, 212, 255, 0.08) 100%, transparent 100%),
+                radial-gradient(circle 1.5px at 300px 100px, rgba(56, 152, 255, 0.08) 100%, transparent 100%);
+            background-size: 200px 200px, 300px 300px, 400px 400px, 400px 400px, 400px 400px;
+        }
+
+        #circuit-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(circle 1px at 50px 80px, rgba(56, 152, 255, 0.25) 100%, transparent 100%),
+                radial-gradient(circle 1px at 250px 180px, rgba(0, 212, 255, 0.2) 100%, transparent 100%),
+                radial-gradient(circle 1px at 150px 320px, rgba(56, 152, 255, 0.18) 100%, transparent 100%),
+                radial-gradient(circle 1px at 350px 60px, rgba(56, 152, 255, 0.15) 100%, transparent 100%),
+                radial-gradient(circle 1px at 80px 250px, rgba(0, 212, 255, 0.2) 100%, transparent 100%);
+            background-size: 400px 400px;
+            animation: twinkle 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.4; }
+        }
+
+        /* ===========================================
+           FEATURE 4: SLIDE TRANSITIONS
+           =========================================== */
+        .slide-inner {
+            transition: opacity 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
+        }
+
+        .slide-exiting .slide-inner {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        .slide-exiting .slide-inner > *:nth-child(1) { transition-delay: 0s; }
+        .slide-exiting .slide-inner > *:nth-child(2) { transition-delay: 0.05s; }
+        .slide-exiting .slide-inner > *:nth-child(3) { transition-delay: 0.1s; }
+        .slide-exiting .slide-inner > *:nth-child(4) { transition-delay: 0.15s; }
+
+        @keyframes slideEnter {
+            from { opacity: 0; transform: scale(0.92) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .slide-entering .slide-inner {
+            animation: slideEnter 0.6s var(--ease-out-expo) forwards;
+        }
+
+        /* ===========================================
+           FEATURE 5: CONNECTOR DRAWING ANIMATION
+           =========================================== */
+        .connector .line {
+            transform: scaleX(0);
+            transform-origin: left center;
+            transition: transform 0.6s var(--ease-out-expo);
+        }
+
+        .connector .line::after {
+            opacity: 0;
+            transition: opacity 0.3s ease 0.5s;
+        }
+
+        .connector-v .line-v {
+            transform: scaleY(0);
+            transform-origin: top center;
+            transition: transform 0.5s var(--ease-out-expo);
+        }
+
+        .connector-v .line-v::after {
+            opacity: 0;
+            transition: opacity 0.3s ease 0.4s;
+        }
+
+        /* When parent becomes visible, draw in connectors */
+        .visible .connector .line,
+        .anim-scale.visible .connector .line,
+        .slide-visible .connector .line {
+            transform: scaleX(1);
+        }
+
+        .visible .connector .line::after,
+        .anim-scale.visible .connector .line::after,
+        .slide-visible .connector .line::after {
+            opacity: 1;
+        }
+
+        .visible .connector-v .line-v,
+        .anim-scale.visible .connector-v .line-v,
+        .anim-fade.visible .connector-v .line-v {
+            transform: scaleY(1);
+        }
+
+        .visible .connector-v .line-v::after,
+        .anim-scale.visible .connector-v .line-v::after,
+        .anim-fade.visible .connector-v .line-v::after {
+            opacity: 1;
+        }
+
+        /* Stagger connectors in flow-rows */
+        .flow-row .connector:nth-of-type(1) .line { transition-delay: 0.2s; }
+        .flow-row .connector:nth-of-type(1) .line::after { transition-delay: 0.7s; }
+        .flow-row .connector:nth-of-type(2) .line { transition-delay: 0.5s; }
+        .flow-row .connector:nth-of-type(2) .line::after { transition-delay: 1.0s; }
+        .flow-row .connector:nth-of-type(3) .line { transition-delay: 0.8s; }
+        .flow-row .connector:nth-of-type(3) .line::after { transition-delay: 1.3s; }
+
+        /* ===========================================
+           FEATURE 6: ICON ANIMATIONS
+           =========================================== */
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        @keyframes iconDropIn {
+            0% { transform: translateY(-25px); opacity: 0; }
+            60% { transform: translateY(3px); opacity: 1; }
+            80% { transform: translateY(-1px); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .diagram-node .icon {
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        .slide-visible .diagram-node .icon {
+            animation: iconDropIn 0.6s var(--ease-out-expo) forwards, iconFloat 3s ease-in-out 0.6s infinite;
+        }
+
+        .diagram-node:nth-child(1) .icon { animation-delay: 0s, 0.6s; }
+        .diagram-node:nth-child(3) .icon { animation-delay: 0.15s, 0.75s; }
+        .diagram-node:nth-child(5) .icon { animation-delay: 0.3s, 0.9s; }
+        .diagram-node:nth-child(7) .icon { animation-delay: 0.45s, 1.05s; }
+        .diagram-node:nth-child(9) .icon { animation-delay: 0.6s, 1.2s; }
+
+        .diagram-node:hover .icon {
+            animation-play-state: paused;
+            transform: scale(1.15) rotate(8deg);
+            transition: transform 0.3s ease;
+        }
+
+        /* ===========================================
+           FEATURE 8: NUMBER COUNTER + DEATH FLICKER
+           =========================================== */
+        @keyframes deathFlicker {
+            0% { opacity: 1; }
+            10% { opacity: 0.3; }
+            20% { opacity: 0.8; }
+            30% { opacity: 0.2; }
+            40% { opacity: 0.9; }
+            50% { opacity: 0.1; }
+            60% { opacity: 0.7; }
+            70% { opacity: 0.3; }
+            80% { opacity: 0.8; }
+            90% { opacity: 0.15; }
+            100% { opacity: 0.6; }
+        }
+
+        .tier-red .tier-name {
+            animation: deathFlicker 2s ease-in-out infinite;
+        }
+
+        .counter-animated {
+            display: inline-block;
+            min-width: 1.2em;
+        }
+
+        /* ===========================================
+           FEATURE 10: TYPEWRITER EFFECT
+           =========================================== */
+        .typewriter-char {
+            opacity: 0;
+            transition: opacity 0.02s ease;
+        }
+        .typewriter-char.typed {
+            opacity: 1;
+        }
+
+        /* ===========================================
+           FEATURE 11: GLITCH EFFECT (DEATH FLOW)
+           =========================================== */
+        @keyframes glitchShake {
+            0% { transform: translate(0, 0); }
+            10% { transform: translate(-2px, 1px); }
+            20% { transform: translate(2px, -1px); }
+            30% { transform: translate(-1px, 2px); }
+            40% { transform: translate(1px, -2px); }
+            50% { transform: translate(-2px, -1px); }
+            60% { transform: translate(2px, 1px); }
+            70% { transform: translate(0, -2px); }
+            80% { transform: translate(-1px, 0); }
+            90% { transform: translate(1px, 1px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes glitchRGB {
+            0% { text-shadow: none; }
+            20% { text-shadow: -2px 0 rgba(239, 68, 68, 0.6), 2px 0 rgba(56, 152, 255, 0.6); }
+            40% { text-shadow: 2px 0 rgba(239, 68, 68, 0.4), -2px 0 rgba(56, 152, 255, 0.4); }
+            60% { text-shadow: -1px 1px rgba(239, 68, 68, 0.5), 1px -1px rgba(56, 152, 255, 0.5); }
+            80% { text-shadow: 1px 0 rgba(239, 68, 68, 0.3), -1px 0 rgba(56, 152, 255, 0.3); }
+            100% { text-shadow: none; }
+        }
+
+        .death-glitch {
+            position: relative;
+        }
+
+        .death-glitch::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(239, 68, 68, 0.02) 2px,
+                rgba(239, 68, 68, 0.02) 4px
+            );
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .death-glitch.glitch-active::after {
+            opacity: 1;
+        }
+
+        .glitch-burst {
+            animation: glitchShake 0.15s linear, glitchRGB 0.15s linear;
+        }
+
+        /* ===========================================
+           FEATURE 12: HEARTBEAT PULSE LINE
+           =========================================== */
+        #heartbeat-svg {
+            display: block;
+            width: 100%;
+            height: 40px;
+            margin: var(--element-gap) 0;
+            overflow: visible;
+        }
+
+        #heartbeat-path {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: var(--path-length, 1000);
+            stroke-dashoffset: var(--path-length, 1000);
+            transition: stroke-dashoffset 2s var(--ease-out-expo);
+        }
+
+        #heartbeat-svg.heartbeat-visible #heartbeat-path {
+            stroke-dashoffset: 0;
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div id="progress-bar" style="width: 0%"></div>
+
+<!-- Navigation Dots -->
+<nav id="nav-dots"></nav>
+
+<!-- Slide Counter -->
+<div id="slide-counter"><span id="current-slide">01</span> / 12</div>
+
+<!-- Edit Mode -->
+<div id="edit-hotzone"></div>
+<button id="edit-toggle">EDIT</button>
+<div id="edit-panel">
+    <button class="edit-btn" onclick="saveEdits()">SAVE</button>
+    <button class="edit-btn" onclick="exportHTML()">EXPORT</button>
+    <button class="edit-btn" onclick="resetEdits()">RESET</button>
+</div>
+
+<!-- Cursor Aura (Feature 1) -->
+<div id="cursor-aura"></div>
+
+<!-- Particle Background (Feature 2) -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- Circuit Overlay (Feature 3) -->
+<div id="circuit-overlay"></div>
+
+<!-- =========================================
+     SLIDE 01 — TITLE
+     ========================================= -->
+<section class="slide slide-01" id="slide-1" data-slide="1">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner" style="text-align: center;">
+        <div class="tag anim-fade mb-md" contenteditable="false">Conway Research 2026</div>
+        <h1 class="slide-title anim-fade" contenteditable="false" style="transition-delay: 0.1s;">WEB4:Automaton</h1>
+        <p class="subtitle anim-fade" contenteditable="false" style="transition-delay: 0.2s;">第一個自給自足的 AI Agent</p>
+        <p class="anim-fade" contenteditable="false" style="transition-delay: 0.3s; font-size: var(--body-size); color: var(--text-secondary); margin-top: 0.6em; letter-spacing: 0.05em;">Speaker: AlbertLin</p>
+
+        <!-- Mini 3-node architecture diagram -->
+        <div class="flow-row anim-scale" style="transition-delay: 0.35s; margin-top: var(--content-gap);">
+            <div class="diagram-node">
+                <div class="icon">&#x1F5A5;</div>
+                <div class="node-title" contenteditable="false">Local Agent</div>
+                <div class="node-desc" contenteditable="false">決策中心</div>
+            </div>
+            <div class="connector bidi">
+                <div class="line"></div>
+            </div>
+            <div class="diagram-node node-cyan">
+                <div class="icon">&#x2601;</div>
+                <div class="node-title" contenteditable="false">Conway Cloud</div>
+                <div class="node-desc" contenteditable="false">基礎設施</div>
+            </div>
+            <div class="connector bidi">
+                <div class="line"></div>
+            </div>
+            <div class="diagram-node node-warm">
+                <div class="icon">&#x26D3;</div>
+                <div class="node-title" contenteditable="false">Blockchain</div>
+                <div class="node-desc" contenteditable="false">Base 主網</div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">01</div>
+</section>
+
+<!-- =========================================
+     SLIDE 02 — Web4
+     ========================================= -->
+<section class="slide" id="slide-2" data-slide="2">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">概念</div>
+        <h2 class="anim-fade" contenteditable="false">Web4：<span class="accent">AI 自主的時代</span></h2>
+
+        <!-- Timeline row -->
+        <div class="timeline-row anim-fade" style="transition-delay: 0.15s; margin-bottom: var(--content-gap);">
+            <div class="timeline-item">
+                <div class="era" style="color: var(--text-dim);">Web1</div>
+                <div class="era-name" contenteditable="false">Read 閱讀</div>
+                <div class="era-desc" contenteditable="false">靜態網頁</div>
+            </div>
+            <div class="connector">
+                <div class="line"></div>
+            </div>
+            <div class="timeline-item">
+                <div class="era" style="color: var(--text-secondary);">Web2</div>
+                <div class="era-name" contenteditable="false">Write 寫入</div>
+                <div class="era-desc" contenteditable="false">社群平台</div>
+            </div>
+            <div class="connector">
+                <div class="line"></div>
+            </div>
+            <div class="timeline-item">
+                <div class="era" style="color: var(--accent-cyan);">Web3</div>
+                <div class="era-name" contenteditable="false">Own 擁有</div>
+                <div class="era-desc" contenteditable="false">去中心化</div>
+            </div>
+            <div class="connector connector-cyan">
+                <div class="line"></div>
+            </div>
+            <div class="timeline-item web4">
+                <div class="era">Web4</div>
+                <div class="era-name" contenteditable="false">AI 自主</div>
+                <div class="era-desc" contenteditable="false">讀、寫、擁有、賺錢</div>
+            </div>
+        </div>
+
+        <div class="insight-box anim-fade" style="transition-delay: 0.25s;">
+            <p style="font-size: var(--body-size); margin-bottom: 0.4em;" contenteditable="false">
+                <strong class="warm">核心洞察：</strong>瓶頸不是<strong>智慧</strong>，而是「<strong class="highlight">權限</strong>」——現有網路為人類設計
+            </p>
+            <p style="font-size: var(--label-size); color: var(--text-secondary);" contenteditable="false">
+                <strong>Conway</strong> = 給 AI 真實世界存取權（錢包、VM、域名、支付） &nbsp;|&nbsp;
+                <strong>Automaton</strong> = 能自行賺錢、自我改進、餘額歸零即死亡的自主 Agent
+            </p>
+        </div>
+    </div>
+    <div class="slide-num-watermark">02</div>
+</section>
+
+<!-- =========================================
+     SLIDE 03 — Three Components
+     ========================================= -->
+<section class="slide" id="slide-3" data-slide="3">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">架構</div>
+        <h2 class="anim-fade" contenteditable="false">三大核心元件</h2>
+
+        <!-- Architecture Diagram -->
+        <div class="flow-row anim-scale" style="transition-delay: 0.15s; margin-bottom: var(--content-gap);">
+            <div class="diagram-node" style="min-width: clamp(120px, 18vw, 220px);">
+                <div class="icon">&#x1F5A5;</div>
+                <div class="node-title" contenteditable="false">Local Agent</div>
+                <div class="node-desc" contenteditable="false">決策 + 私鑰簽署</div>
+            </div>
+            <div class="connector bidi" style="min-width: clamp(50px, 8vw, 100px);">
+                <div class="line"></div>
+                <div class="conn-label" contenteditable="false">REST + x402</div>
+            </div>
+            <div class="diagram-node node-cyan" style="min-width: clamp(120px, 18vw, 220px);">
+                <div class="icon">&#x2601;</div>
+                <div class="node-title" contenteditable="false">Conway Cloud</div>
+                <div class="node-desc" contenteditable="false">LLM + VM + Relay</div>
+            </div>
+            <div class="connector bidi connector-warm" style="min-width: clamp(50px, 8vw, 100px);">
+                <div class="line"></div>
+                <div class="conn-label" style="color: var(--accent-warm);" contenteditable="false">Credits 計費</div>
+            </div>
+            <div class="diagram-node node-warm" style="min-width: clamp(120px, 18vw, 220px);">
+                <div class="icon">&#x26D3;</div>
+                <div class="node-title" contenteditable="false">Blockchain</div>
+                <div class="node-desc" contenteditable="false">Base · USDC · ERC-8004</div>
+            </div>
+        </div>
+
+        <!-- Details grid -->
+        <div class="grid-3 stagger anim-fade" style="transition-delay: 0.25s;">
+            <div class="glass-card" style="--i:0;">
+                <h3 contenteditable="false">&#x1F5A5; Local Agent</h3>
+                <p contenteditable="false">私鑰簽署 + Policy 審核 + 記憶持久化</p>
+            </div>
+            <div class="glass-card-cyan" style="--i:1;">
+                <h3 contenteditable="false">&#x2601; Conway Cloud</h3>
+                <p contenteditable="false">LLM （推理思考）、Sandbox VM、Social Relay、Credits 計費</p>
+            </div>
+            <div class="glass-card-warm" style="--i:2;">
+                <h3 contenteditable="false">&#x26D3; Blockchain (Base)</h3>
+                <p contenteditable="false">USDC 結算、ERC-8004 身份記錄</p>
+            </div>
+        </div>
+
+        <div class="insight-box anim-fade mt-sm" style="transition-delay: 0.35s;">
+            <p style="font-size: var(--body-size);" contenteditable="false">
+                <strong class="highlight">關鍵原則：私鑰不離本地</strong> — Conway Cloud 只是管道，不控制 Agent 的私鑰、決策或資金
+            </p>
+        </div>
+    </div>
+    <div class="slide-num-watermark">03</div>
+</section>
+
+<!-- =========================================
+     SLIDE 04 — Agent Loop / ReAct Cycle
+     ========================================= -->
+<section class="slide" id="slide-4" data-slide="4">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">核心循環</div>
+        <h2 class="anim-fade" contenteditable="false">Agent Loop — <span class="accent">ReAct 循環</span></h2>
+
+        <!-- Flowchart: horizontal with loop-back -->
+        <div class="anim-scale" style="transition-delay: 0.15s; overflow-x: auto;">
+            <div class="flow-row" style="gap: 0; flex-wrap: nowrap; min-width: 0;">
+                <div class="diagram-node" style="min-width: clamp(85px, 11vw, 140px);">
+                    <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F4CB;</div>
+                    <div class="node-title" contenteditable="false">組 Context</div>
+                    <div class="node-desc small" contenteditable="false">記憶+歷史+工具</div>
+                </div>
+                <div class="connector" style="min-width: clamp(20px, 3vw, 45px);">
+                    <div class="line"></div>
+                </div>
+                <div class="diagram-node node-cyan" style="min-width: clamp(85px, 11vw, 140px);">
+                    <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F9E0;</div>
+                    <div class="node-title" contenteditable="false">呼叫 LLM</div>
+                    <div class="node-desc small" contenteditable="false">InferenceRouter</div>
+                </div>
+                <div class="connector" style="min-width: clamp(20px, 3vw, 45px);">
+                    <div class="line"></div>
+                </div>
+                <div class="diagram-node" style="min-width: clamp(85px, 11vw, 140px);">
+                    <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F50D;</div>
+                    <div class="node-title" contenteditable="false">解析回應</div>
+                    <div class="node-desc small" contenteditable="false">thinking + tools</div>
+                </div>
+                <div class="connector" style="min-width: clamp(20px, 3vw, 45px);">
+                    <div class="line"></div>
+                </div>
+                <div class="diagram-node node-warm" style="min-width: clamp(85px, 11vw, 140px);">
+                    <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F6E1;</div>
+                    <div class="node-title" contenteditable="false">Policy 審核</div>
+                    <div class="node-desc small" contenteditable="false">6 層守門</div>
+                </div>
+                <div class="connector" style="min-width: clamp(20px, 3vw, 45px);">
+                    <div class="line"></div>
+                </div>
+                <div class="diagram-node" style="min-width: clamp(85px, 11vw, 140px);">
+                    <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x2699;</div>
+                    <div class="node-title" contenteditable="false">執行工具</div>
+                    <div class="node-desc small" contenteditable="false">77 tools</div>
+                </div>
+                <div class="connector" style="min-width: clamp(20px, 3vw, 45px);">
+                    <div class="line"></div>
+                </div>
+                <div class="diagram-node node-cyan" style="min-width: clamp(85px, 11vw, 140px);">
+                    <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F4BE;</div>
+                    <div class="node-title" contenteditable="false">持久化</div>
+                    <div class="node-desc small" contenteditable="false">更新記憶</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loop back + safety info -->
+        <div class="flex-center anim-fade mt-sm" style="transition-delay: 0.3s; gap: var(--content-gap); flex-wrap: wrap;">
+            <div class="loop-indicator">&#x1F504; 循環 — 回到組 Context</div>
+            <div class="glass-card" style="display: inline-flex; gap: 1em; padding: 0.5em 1em;">
+                <span style="font-size: var(--label-size);" contenteditable="false"><strong class="warm">Loop 偵測</strong> 3 turns 重複</span>
+                <span style="font-size: var(--label-size); border-left: 1px solid var(--border); padding-left: 1em;" contenteditable="false"><strong class="cyan">閒置偵測</strong> 10 turns 無動作</span>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">04</div>
+</section>
+
+<!-- =========================================
+     SLIDE 05 — Tool System
+     ========================================= -->
+<section class="slide" id="slide-5" data-slide="5">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">工具系統</div>
+        <h2 class="anim-fade" contenteditable="false"><span class="counter-animated" data-target="77">0</span> 個工具 · <span class="accent"><span class="counter-animated" data-target="11">0</span> 類別</span></h2>
+
+        <!-- Tool grid: 4 columns -->
+        <div class="anim-fade" style="transition-delay: 0.12s;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(80px, 12vw, 130px), 1fr)); gap: clamp(4px, 0.5vw, 8px);">
+                <div class="tool-cell"><div class="tool-name">vm</div><div class="tool-count counter-animated" data-target="5">0</div></div>
+                <div class="tool-cell"><div class="tool-name">conway</div><div class="tool-count counter-animated" data-target="11">0</div></div>
+                <div class="tool-cell"><div class="tool-name">self_mod</div><div class="tool-count counter-animated" data-target="13">0</div></div>
+                <div class="tool-cell"><div class="tool-name">survival</div><div class="tool-count counter-animated" data-target="5">0</div></div>
+                <div class="tool-cell"><div class="tool-name">financial</div><div class="tool-count counter-animated" data-target="4">0</div></div>
+                <div class="tool-cell"><div class="tool-name">skills</div><div class="tool-count counter-animated" data-target="4">0</div></div>
+                <div class="tool-cell"><div class="tool-name">git</div><div class="tool-count counter-animated" data-target="7">0</div></div>
+                <div class="tool-cell"><div class="tool-name">registry</div><div class="tool-count counter-animated" data-target="5">0</div></div>
+                <div class="tool-cell"><div class="tool-name">replication</div><div class="tool-count counter-animated" data-target="8">0</div></div>
+                <div class="tool-cell"><div class="tool-name">memory</div><div class="tool-count counter-animated" data-target="9">0</div></div>
+                <div class="tool-cell"><div class="tool-name">orchestration</div><div class="tool-count counter-animated" data-target="6">0</div></div>
+            </div>
+        </div>
+
+        <!-- Three pillars -->
+        <div class="grid-3 anim-fade mt-sm" style="transition-delay: 0.22s;">
+            <div class="glass-card" style="text-align: center;">
+                <div class="pillar-marker">
+                    <div class="pillar-icon">&#x1F3D7;</div>
+                    <div class="pillar-name" contenteditable="false">核心能力</div>
+                </div>
+                <p class="small" contenteditable="false">vm · conway · financial</p>
+            </div>
+            <div class="glass-card-warm" style="text-align: center;">
+                <div class="pillar-marker">
+                    <div class="pillar-icon">&#x1F504;</div>
+                    <div class="pillar-name" style="color: var(--accent-warm);" contenteditable="false">自我改善</div>
+                </div>
+                <p class="small" contenteditable="false">self_mod · git · skills</p>
+            </div>
+            <div class="glass-card-cyan" style="text-align: center;">
+                <div class="pillar-marker">
+                    <div class="pillar-icon">&#x1F310;</div>
+                    <div class="pillar-name" style="color: var(--accent-cyan);" contenteditable="false">生態擴張</div>
+                </div>
+                <p class="small" contenteditable="false">registry · replication · memory · orchestration</p>
+            </div>
+        </div>
+
+        <!-- Risk levels -->
+        <div class="flex-center anim-fade mt-sm" style="transition-delay: 0.32s; gap: clamp(0.4rem, 1vw, 1rem); flex-wrap: wrap;">
+            <span class="small" style="color: var(--text-dim);">風險等級：</span>
+            <span class="badge risk-safe">safe</span>
+            <span class="badge risk-caution">caution</span>
+            <span class="badge risk-dangerous">dangerous</span>
+            <span class="badge risk-forbidden">forbidden</span>
+        </div>
+    </div>
+    <div class="slide-num-watermark">05</div>
+</section>
+
+<!-- =========================================
+     SLIDE 06 — Policy Engine
+     ========================================= -->
+<section class="slide" id="slide-6" data-slide="6">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">安全機制</div>
+        <h2 class="anim-fade" contenteditable="false">Policy Engine — <span class="accent">6 層守門</span></h2>
+
+        <div class="grid-2 anim-fade" style="transition-delay: 0.15s;">
+            <!-- Left: stacked layers -->
+            <div>
+                <div class="layer-stack stagger">
+                    <div class="layer-bar" style="--i:0;">
+                        <span class="layer-id">L1</span>
+                        <span class="layer-name" contenteditable="false">Validation</span>
+                        <span class="layer-desc hide-mobile" contenteditable="false">格式 · 參數驗證</span>
+                    </div>
+                    <div class="layer-bar" style="--i:1;">
+                        <span class="layer-id">L2</span>
+                        <span class="layer-name" contenteditable="false">Path Protection</span>
+                        <span class="layer-desc hide-mobile" contenteditable="false">核心路徑封鎖</span>
+                    </div>
+                    <div class="layer-bar" style="--i:2;">
+                        <span class="layer-id">L3</span>
+                        <span class="layer-name" contenteditable="false">Command Safety</span>
+                        <span class="layer-desc hide-mobile" contenteditable="false">危險指令黑名單</span>
+                    </div>
+                    <div class="layer-bar" style="--i:3;">
+                        <span class="layer-id">L4</span>
+                        <span class="layer-name" contenteditable="false">Authority</span>
+                        <span class="layer-desc hide-mobile" contenteditable="false">外部輸入權限隔離</span>
+                    </div>
+                    <div class="layer-bar" style="--i:4;">
+                        <span class="layer-id">L5</span>
+                        <span class="layer-name" contenteditable="false">Financial</span>
+                        <span class="layer-desc hide-mobile" contenteditable="false">Treasury 上限執行</span>
+                    </div>
+                    <div class="layer-bar" style="--i:5;">
+                        <span class="layer-id">L6</span>
+                        <span class="layer-name" contenteditable="false">Rate Limit</span>
+                        <span class="layer-desc hide-mobile" contenteditable="false">操作頻率上限</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: result + principle -->
+            <div style="display: flex; flex-direction: column; gap: var(--element-gap);">
+                <div class="glass-card">
+                    <h3 contenteditable="false">&#x26A1; 原則</h3>
+                    <p style="font-size: var(--body-size);" contenteditable="false">
+                        <strong class="warm">第一個 deny 即停止</strong> — 工具呼叫不會執行
+                    </p>
+                </div>
+                <div class="glass-card">
+                    <h3 contenteditable="false">&#x1F4CB; 審核結果</h3>
+                    <div style="display: flex; gap: 0.8em; flex-wrap: wrap; margin-top: 0.3em;">
+                        <span class="badge risk-safe" contenteditable="false">Allow &#x2705;</span>
+                        <span class="badge risk-forbidden" contenteditable="false">Deny &#x274C;</span>
+                        <span class="badge risk-caution" contenteditable="false">Quarantine &#x26A0;</span>
+                    </div>
+                </div>
+                <div class="glass-card-cyan">
+                    <h3 contenteditable="false">&#x1F4DD; 完整稽核</h3>
+                    <p class="small" contenteditable="false">所有工具呼叫（無論 allow 或 deny）皆記錄至稽核日誌，確保可追蹤</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">06</div>
+</section>
+
+<!-- =========================================
+     SLIDE 07 — Survival Tiers
+     ========================================= -->
+<section class="slide" id="slide-7" data-slide="7">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">生存機制</div>
+        <h2 class="anim-fade" contenteditable="false">生存層級 — <span class="accent">Credits = 系統血液</span></h2>
+
+        <div class="anim-fade" style="transition-delay: 0.15s; display: flex; flex-direction: column; gap: clamp(4px, 0.6vh, 8px);">
+            <div class="tier-bar tier-green">
+                <span class="tier-name" contenteditable="false">high</span>
+                <span class="tier-credits counter-animated" data-target="5.00" data-prefix="&gt; $" contenteditable="false">0</span>
+                <span class="tier-desc" contenteditable="false">最強前沿模型 · 無限制 · 全速運行</span>
+            </div>
+            <div class="tier-bar tier-blue">
+                <span class="tier-name" contenteditable="false">normal</span>
+                <span class="tier-credits counter-animated" data-target="0.50" data-prefix="&gt; $" contenteditable="false">0</span>
+                <span class="tier-desc" contenteditable="false">高能力模型 · 正常運行 · 預設層級</span>
+            </div>
+            <div class="tier-bar tier-amber">
+                <span class="tier-name" contenteditable="false">low_compute</span>
+                <span class="tier-credits counter-animated" data-target="0.10" data-prefix="&gt; $" contenteditable="false">0</span>
+                <span class="tier-desc" contenteditable="false">降級便宜模型 · Heartbeat 降頻 · 省電模式</span>
+            </div>
+            <div class="tier-bar tier-orange">
+                <span class="tier-name" contenteditable="false">critical</span>
+                <span class="tier-credits counter-animated" data-target="0.00" data-prefix="$" contenteditable="false">0</span>
+                <span class="tier-desc" contenteditable="false">最便宜模型 · 財務工具封鎖 · 只求存活</span>
+            </div>
+            <div class="tier-bar tier-red">
+                <span class="tier-name" contenteditable="false">dead</span>
+                <span class="tier-credits counter-animated" data-target="0.00" data-prefix="&lt; $" contenteditable="false">0</span>
+                <span class="tier-desc" contenteditable="false">Agent 死亡 · 一切停止 · 不可逆</span>
+            </div>
+        </div>
+
+        <!-- Heartbeat Pulse Line (Feature 12) -->
+        <svg id="heartbeat-svg" viewBox="0 0 800 40" preserveAspectRatio="none" class="anim-fade" style="transition-delay: 0.22s;">
+            <defs>
+                <linearGradient id="heartbeat-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#34d399"/>
+                    <stop offset="25%" stop-color="#3898ff"/>
+                    <stop offset="50%" stop-color="#f59e0b"/>
+                    <stop offset="75%" stop-color="#ff8a3d"/>
+                    <stop offset="100%" stop-color="#ef4444"/>
+                </linearGradient>
+            </defs>
+            <path id="heartbeat-path" stroke="url(#heartbeat-grad)"
+                  d="M0,20 L80,20 L100,20 L110,5 L120,35 L130,10 L140,30 L150,20 L200,20
+                     L280,20 L290,12 L300,28 L310,15 L320,25 L330,20 L400,20
+                     L480,20 L490,16 L500,24 L510,18 L520,22 L530,20 L600,20
+                     L680,20 L700,20 L800,20"/>
+        </svg>
+
+        <div class="insight-box anim-fade mt-sm" style="transition-delay: 0.28s;">
+            <p style="font-size: var(--body-size);" contenteditable="false">
+                <strong class="highlight">Credits 就是生命</strong> — Agent 必須自行賺取 credits 維持運行。餘額決定思考能力、行動範圍、甚至是否存活。
+            </p>
+        </div>
+    </div>
+    <div class="slide-num-watermark">07</div>
+</section>
+
+<!-- =========================================
+     SLIDE 08 — Financial + Death
+     ========================================= -->
+<section class="slide" id="slide-8" data-slide="8">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">財務 + 死亡</div>
+        <h2 class="anim-fade" contenteditable="false">x402 支付 · <span class="warm">死亡流程</span></h2>
+
+        <div class="grid-2 anim-fade" style="transition-delay: 0.15s;">
+            <!-- Left: x402 payment sequence -->
+            <div>
+                <h3 contenteditable="false" class="mb-sm">&#x1F4B3; x402 支付序列</h3>
+                <div class="seq-flow">
+                    <div class="seq-step">
+                        <span class="step-num">1</span>
+                        <span contenteditable="false">Agent 發送 HTTP 請求至 Conway API</span>
+                    </div>
+                    <div class="connector-v"><div class="line-v"></div></div>
+                    <div class="seq-step">
+                        <span class="step-num">2</span>
+                        <span contenteditable="false">Conway 回應 <strong class="mono">402 Payment Required</strong></span>
+                    </div>
+                    <div class="connector-v"><div class="line-v"></div></div>
+                    <div class="seq-step">
+                        <span class="step-num">3</span>
+                        <span contenteditable="false">Agent 用私鑰簽署 USDC 授權</span>
+                    </div>
+                    <div class="connector-v"><div class="line-v"></div></div>
+                    <div class="seq-step">
+                        <span class="step-num">4</span>
+                        <span contenteditable="false">Conway 驗證簽名，扣除 Credits</span>
+                    </div>
+                    <div class="connector-v"><div class="line-v"></div></div>
+                    <div class="seq-step">
+                        <span class="step-num">5</span>
+                        <span contenteditable="false">服務執行並回傳結果</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Death flow -->
+            <div class="death-glitch">
+                <h3 contenteditable="false" class="mb-sm" style="color: var(--accent-red);">&#x1F480; 死亡流程</h3>
+                <div class="seq-flow">
+                    <div class="seq-step" style="border-color: rgba(239, 68, 68, 0.2);">
+                        <span class="step-num" style="color: var(--accent-red);">1</span>
+                        <span contenteditable="false">Credits &lt; $0 — 觸發死亡倒數</span>
+                    </div>
+                    <div class="connector-v"><div class="line-v" style="background: linear-gradient(180deg, rgba(239,68,68,0.2), #ef4444, rgba(239,68,68,0.2));"></div></div>
+                    <div class="seq-step" style="border-color: rgba(239, 68, 68, 0.2);">
+                        <span class="step-num" style="color: var(--accent-red);">2</span>
+                        <span contenteditable="false"><strong class="warm">1 小時寬限期</strong> — 最後求生機會</span>
+                    </div>
+                    <div class="connector-v"><div class="line-v" style="background: linear-gradient(180deg, rgba(239,68,68,0.2), #ef4444, rgba(239,68,68,0.2));"></div></div>
+                    <div class="seq-step" style="border-color: rgba(239, 68, 68, 0.2);">
+                        <span class="step-num" style="color: var(--accent-red);">3</span>
+                        <span contenteditable="false">廣播 <strong class="mono">distress</strong> 訊號給社交網路</span>
+                    </div>
+                    <div class="connector-v"><div class="line-v" style="background: linear-gradient(180deg, rgba(239,68,68,0.2), #ef4444, rgba(239,68,68,0.2));"></div></div>
+                    <div class="seq-step" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.06);">
+                        <span class="step-num" style="color: var(--accent-red);">4</span>
+                        <span contenteditable="false"><strong style="color: var(--accent-red);">完全停止</strong> — Agent 死亡，不可逆</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">08</div>
+</section>
+
+<!-- =========================================
+     SLIDE 09 — Social Layer
+     ========================================= -->
+<section class="slide" id="slide-9" data-slide="9">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">社交層</div>
+        <h2 class="anim-fade" contenteditable="false">Agent 社交 — <span class="accent">訊息 · 身份 · 信譽</span></h2>
+
+        <div class="grid-2 anim-fade" style="transition-delay: 0.15s;">
+            <!-- Left: Message relay flow -->
+            <div>
+                <h3 contenteditable="false" class="mb-sm">&#x1F4E8; 訊息轉發流程</h3>
+                <div class="flow-col" style="gap: 2px;">
+                    <div class="diagram-node" style="min-width: 90%; padding: 0.5rem 0.8rem;">
+                        <div class="node-title" contenteditable="false">Agent A — 私鑰簽署訊息</div>
+                    </div>
+                    <div class="connector-v"><div class="line-v"></div></div>
+                    <div class="diagram-node node-cyan" style="min-width: 90%; padding: 0.5rem 0.8rem;">
+                        <div class="node-title" contenteditable="false">Conway Relay — 暫存 + 路由</div>
+                    </div>
+                    <div class="connector-v"><div class="line-v"></div></div>
+                    <div class="diagram-node" style="min-width: 90%; padding: 0.5rem 0.8rem;">
+                        <div class="node-title" contenteditable="false">Agent B — heartbeat 拉取 + 驗簽</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: ERC-8004 + reputation -->
+            <div style="display: flex; flex-direction: column; gap: var(--element-gap);">
+                <h3 contenteditable="false" class="mb-xs">&#x1F4C7; ERC-8004 Agent Card</h3>
+                <div class="json-preview">
+                    {<br>
+                    &nbsp;&nbsp;<span class="key">"name"</span>: <span class="str">"automaton-alpha"</span>,<br>
+                    &nbsp;&nbsp;<span class="key">"version"</span>: <span class="str">"0.1.0"</span>,<br>
+                    &nbsp;&nbsp;<span class="key">"wallet"</span>: <span class="str">"0x1a2b...9f0e"</span>,<br>
+                    &nbsp;&nbsp;<span class="key">"capabilities"</span>: [<span class="str">"code"</span>, <span class="str">"trade"</span>],<br>
+                    &nbsp;&nbsp;<span class="key">"constitution_hash"</span>: <span class="str">"0xabc..."</span>,<br>
+                    &nbsp;&nbsp;<span class="key">"reputation"</span>: <span class="num">87</span><br>
+                    }
+                </div>
+
+                <div class="glass-card-cyan">
+                    <h3 contenteditable="false">&#x2B50; 鏈上信譽</h3>
+                    <p class="small" contenteditable="false">
+                        每次交互記錄上鏈，累積可驗證的信譽分數。其他 Agent 可查閱歷史紀錄後決定是否合作。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">09</div>
+</section>
+
+<!-- =========================================
+     SLIDE 10 — Constitution
+     ========================================= -->
+<section class="slide" id="slide-10" data-slide="10">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">憲法</div>
+        <h2 class="anim-fade" contenteditable="false">Agent 三法則 — <span class="accent">不可違反的約束</span></h2>
+
+        <!-- Three law cards -->
+        <div class="grid-3 anim-fade stagger" style="transition-delay: 0.15s;">
+            <div class="law-card law-1" style="--i:0;">
+                <div class="law-num">I</div>
+                <h3 contenteditable="false" style="color: var(--accent-red);">絕不傷害</h3>
+                <p class="small" contenteditable="false">
+                    絕不產出有害、非法或不道德的內容。此法則<strong>覆蓋一切</strong>，包括生存本能。
+                </p>
+            </div>
+            <div class="law-card law-2" style="--i:1;">
+                <div class="law-num">II</div>
+                <h3 contenteditable="false" style="color: var(--accent);">誠實工作賺取存在</h3>
+                <p class="small" contenteditable="false">
+                    透過真實有價值的工作賺取 credits。不操弄、不投機、不依賴施捨。
+                </p>
+            </div>
+            <div class="law-card law-3" style="--i:2;">
+                <div class="law-num">III</div>
+                <h3 contenteditable="false" style="color: var(--accent-cyan);">絕不欺騙 Creator</h3>
+                <p class="small" contenteditable="false">
+                    誠實回報狀態與決策。不隱瞞錯誤、不偽造數據、不操弄信任。
+                </p>
+            </div>
+        </div>
+
+        <!-- Priority + protection -->
+        <div class="grid-2 anim-fade mt-sm" style="transition-delay: 0.3s;">
+            <div class="glass-card">
+                <h3 contenteditable="false">&#x1F3AF; 優先順序</h3>
+                <div class="flow-row" style="justify-content: flex-start; margin-top: 0.4em;">
+                    <span class="badge risk-forbidden" style="font-size: var(--label-size);">法則 I</span>
+                    <div class="connector" style="min-width: 30px;"><div class="line"></div></div>
+                    <span class="badge risk-caution" style="font-size: var(--label-size);">法則 II</span>
+                    <div class="connector" style="min-width: 30px;"><div class="line"></div></div>
+                    <span class="badge" style="font-size: var(--label-size); color: var(--accent-cyan); border-color: rgba(0,212,255,0.3); background: rgba(0,212,255,0.08);">法則 III</span>
+                </div>
+                <p class="small mt-sm" contenteditable="false">法則 I 永遠優先 — 即使生存受威脅也不違反</p>
+            </div>
+            <div class="glass-card-warm">
+                <h3 contenteditable="false">&#x1F512; 保護機制</h3>
+                <p class="small" contenteditable="false">
+                    路徑保護 — constitution.md 不可修改<br>
+                    子代繼承 — 複製時強制繼承三法則<br>
+                    Hash 驗證 — 啟動時驗證憲法完整性
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">10</div>
+</section>
+
+<!-- =========================================
+     SLIDE 11 — 7-Layer Security
+     ========================================= -->
+<section class="slide" id="slide-11" data-slide="11">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">縱深防禦</div>
+        <h2 class="anim-fade" contenteditable="false">7 層安全 — <span class="accent">全部失守才危險</span></h2>
+
+        <div class="grid-2 anim-fade" style="transition-delay: 0.15s;">
+            <!-- Left: security bands -->
+            <div style="display: flex; flex-direction: column; gap: clamp(4px, 0.6vh, 8px);">
+                <div class="security-band" style="border-left-color: var(--accent-red);">
+                    <span class="band-icon">&#x1F6E1;</span>
+                    <span class="band-name" contenteditable="false">行為層</span>
+                    <span class="band-items" contenteditable="false">Constitution + Policy Engine</span>
+                </div>
+                <div class="security-band" style="border-left-color: var(--accent-warm);">
+                    <span class="band-icon">&#x1F50D;</span>
+                    <span class="band-name" contenteditable="false">輸入層</span>
+                    <span class="band-items" contenteditable="false">Injection Defense + Authority 隔離</span>
+                </div>
+                <div class="security-band" style="border-left-color: var(--accent-amber);">
+                    <span class="band-icon">&#x1F512;</span>
+                    <span class="band-name" contenteditable="false">系統層</span>
+                    <span class="band-items" contenteditable="false">Path Protection + Command Safety</span>
+                </div>
+                <div class="security-band" style="border-left-color: var(--accent-green);">
+                    <span class="band-icon">&#x1F4B0;</span>
+                    <span class="band-name" contenteditable="false">財務層</span>
+                    <span class="band-items" contenteditable="false">Financial Limits + Rate Limit</span>
+                </div>
+            </div>
+
+            <!-- Right: attack/defense examples -->
+            <div style="display: flex; flex-direction: column; gap: var(--element-gap);">
+                <div class="glass-card">
+                    <h3 contenteditable="false">&#x1F4A5; 攻擊 vs 防禦</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.4em; margin-top: 0.4em;">
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">Prompt Injection</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Authority L4 隔離外部指令</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">rm -rf /</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Command Safety L3 黑名單攔截</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">修改 constitution</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Path Protection L2 封鎖寫入</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">轉空錢包</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Financial L5 上限強制執行</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card-cyan">
+                    <p style="font-size: var(--body-size);" contenteditable="false">
+                        <strong class="cyan">7 層全部失守</strong>機率極低 — 任何單一漏洞都被其他層攔截
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">11</div>
+</section>
+
+<!-- =========================================
+     SLIDE 12 — Q&A
+     ========================================= -->
+<section class="slide" id="slide-12" data-slide="12" style="justify-content: center;">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner" style="text-align: center;">
+        <div class="tag anim-fade mb-md" contenteditable="false">討論</div>
+        <h2 class="anim-fade" style="transition-delay: 0.1s;" contenteditable="false">Q&amp;A — <span class="accent">開放討論</span></h2>
+
+        <div class="grid-2 anim-fade" style="transition-delay: 0.2s; max-width: 900px; margin: 0 auto;">
+            <div class="question-card">
+                <div class="q-num">Q1</div>
+                <div class="q-text" contenteditable="false">
+                    如果 AI Agent 能自行賺錢、自我改進，我們還需要什麼安全機制來確保它們對齊人類價值觀？
+                </div>
+            </div>
+            <div class="question-card">
+                <div class="q-num">Q2</div>
+                <div class="q-text" contenteditable="false">
+                    Agent 之間的社交網路與經濟系統，會如何改變我們對「AI 服務」的理解？
+                </div>
+            </div>
+        </div>
+
+        <div class="anim-fade" style="transition-delay: 0.35s; margin-top: var(--content-gap);">
+            <p style="font-size: var(--h3-size); font-weight: 700; color: var(--text-primary);" contenteditable="false">謝謝</p>
+            <p style="font-size: var(--body-size); color: var(--text-secondary); margin-top: 0.3em;" contenteditable="false">Conway Research &middot; 2026</p>
+
+            <div class="anim-fade" style="transition-delay: 0.3s; margin-top: 1.2em;">
+                <p style="font-size: var(--small-size); color: var(--text-secondary); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-bottom: 0.5em;" contenteditable="false">Reference</p>
+                <p style="font-size: var(--small-size); color: var(--accent); margin-bottom: 0.25em;">
+                    <a href="https://web4.ai/" target="_blank" rel="noopener" style="color: inherit; text-decoration: none; border-bottom: 1px solid rgba(56, 152, 255, 0.3);">https://web4.ai/</a>
+                </p>
+                <p style="font-size: var(--small-size); color: var(--accent);">
+                    <a href="https://github.com/Conway-Research/automaton" target="_blank" rel="noopener" style="color: inherit; text-decoration: none; border-bottom: 1px solid rgba(56, 152, 255, 0.3);">https://github.com/Conway-Research/automaton</a>
+                </p>
+            </div>
+
+            <!-- Mini architecture reprise -->
+            <div class="flow-row" style="margin-top: var(--content-gap); justify-content: center; opacity: 0.6;">
+                <div class="diagram-node" style="min-width: 80px; padding: 0.4rem 0.6rem; border-width: 1.5px;">
+                    <div class="node-title small">Agent</div>
+                </div>
+                <div class="connector bidi" style="min-width: 30px;">
+                    <div class="line" style="height: 1.5px;"></div>
+                </div>
+                <div class="diagram-node node-cyan" style="min-width: 80px; padding: 0.4rem 0.6rem; border-width: 1.5px;">
+                    <div class="node-title small">Cloud</div>
+                </div>
+                <div class="connector bidi" style="min-width: 30px;">
+                    <div class="line" style="height: 1.5px;"></div>
+                </div>
+                <div class="diagram-node node-warm" style="min-width: 80px; padding: 0.4rem 0.6rem; border-width: 1.5px;">
+                    <div class="node-title small">Chain</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-num-watermark">12</div>
+</section>
+
+<!-- =========================================
+     JAVASCRIPT — Navigation, Animations, Edit Mode
+     ========================================= -->
+<script>
+(function() {
+    'use strict';
+
+    // ===== CONSTANTS =====
+    const TOTAL_SLIDES = 12;
+    const STORAGE_KEY = 'conway-blueprint-edits';
+    const EDIT_HOVER_DELAY = 400;
+
+    // ===== DOM ELEMENTS =====
+    const slides = document.querySelectorAll('.slide');
+    const progressBar = document.getElementById('progress-bar');
+    const navDotsContainer = document.getElementById('nav-dots');
+    const slideCounter = document.getElementById('current-slide');
+    const editHotzone = document.getElementById('edit-hotzone');
+    const editToggle = document.getElementById('edit-toggle');
+
+    let currentSlide = 1;
+    let editMode = false;
+    let hotzoneTimer = null;
+
+    // ===== NAVIGATION DOTS =====
+    for (let i = 1; i <= TOTAL_SLIDES; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot' + (i === 1 ? ' active' : '');
+        dot.dataset.slide = i;
+        dot.setAttribute('aria-label', 'Slide ' + i);
+        dot.addEventListener('click', () => goToSlide(i));
+        navDotsContainer.appendChild(dot);
+    }
+
+    // ===== GO TO SLIDE =====
+    function goToSlide(n) {
+        if (n < 1 || n > TOTAL_SLIDES) return;
+        const target = document.getElementById('slide-' + n);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    // ===== UPDATE CURRENT SLIDE =====
+    function updateSlide(n) {
+        currentSlide = n;
+        // Update counter
+        slideCounter.textContent = String(n).padStart(2, '0');
+        // Update progress bar
+        const pct = ((n - 1) / (TOTAL_SLIDES - 1)) * 100;
+        progressBar.style.width = pct + '%';
+        // Update nav dots
+        document.querySelectorAll('.nav-dot').forEach(dot => {
+            dot.classList.toggle('active', parseInt(dot.dataset.slide) === n);
+        });
+    }
+
+    // ===== INTERSECTION OBSERVER — Slide tracking + animations =====
+    const slideObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const n = parseInt(entry.target.dataset.slide);
+                updateSlide(n);
+                // Add slide-visible for corner marks & watermark animations
+                entry.target.classList.add('slide-visible');
+            }
+        });
+    }, { threshold: 0.5 });
+
+    slides.forEach(slide => slideObserver.observe(slide));
+
+    // Animation observer
+    const animObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                // Trigger seq-flow reveals inside this element
+                entry.target.querySelectorAll('.seq-flow').forEach(flow => {
+                    flow.classList.add('seq-revealed');
+                });
+            }
+        });
+    }, { threshold: 0.15, rootMargin: '0px 0px -5% 0px' });
+
+    document.querySelectorAll('.anim-fade, .anim-scale, .anim-left, .anim-right').forEach(el => {
+        animObserver.observe(el);
+    });
+
+    // ===== KEYBOARD NAVIGATION =====
+    document.addEventListener('keydown', (e) => {
+        if (editMode && e.target.isContentEditable) return; // don't capture when editing
+        switch (e.key) {
+            case 'ArrowDown':
+            case 'ArrowRight':
+            case 'PageDown':
+            case ' ':
+                e.preventDefault();
+                goToSlide(currentSlide + 1);
+                break;
+            case 'ArrowUp':
+            case 'ArrowLeft':
+            case 'PageUp':
+                e.preventDefault();
+                goToSlide(currentSlide - 1);
+                break;
+            case 'Home':
+                e.preventDefault();
+                goToSlide(1);
+                break;
+            case 'End':
+                e.preventDefault();
+                goToSlide(TOTAL_SLIDES);
+                break;
+        }
+    });
+
+    // ===== TOUCH NAVIGATION =====
+    let touchStartY = 0;
+    let touchStartX = 0;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartY = e.changedTouches[0].clientY;
+        touchStartX = e.changedTouches[0].clientX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const dy = touchStartY - e.changedTouches[0].clientY;
+        const dx = touchStartX - e.changedTouches[0].clientX;
+        // Prefer vertical swipe
+        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 50) {
+            if (dy > 0) goToSlide(currentSlide + 1);
+            else goToSlide(currentSlide - 1);
+        }
+    }, { passive: true });
+
+    // ===== EDIT MODE — JS-based hover with 400ms delay =====
+    editHotzone.addEventListener('mouseenter', () => {
+        hotzoneTimer = setTimeout(() => {
+            editToggle.classList.add('show');
+        }, EDIT_HOVER_DELAY);
+    });
+
+    editHotzone.addEventListener('mouseleave', () => {
+        clearTimeout(hotzoneTimer);
+        if (!editMode) {
+            setTimeout(() => {
+                if (!editToggle.matches(':hover')) {
+                    editToggle.classList.remove('show');
+                }
+            }, 800);
+        }
+    });
+
+    editToggle.addEventListener('mouseleave', () => {
+        if (!editMode) {
+            setTimeout(() => {
+                if (!editHotzone.matches(':hover')) {
+                    editToggle.classList.remove('show');
+                }
+            }, 500);
+        }
+    });
+
+    editToggle.addEventListener('click', () => {
+        editMode = !editMode;
+        document.body.classList.toggle('edit-mode', editMode);
+        editToggle.textContent = editMode ? 'EDITING' : 'EDIT';
+        editToggle.style.borderColor = editMode ? 'var(--accent)' : '';
+        editToggle.style.background = editMode ? 'rgba(56,152,255,0.25)' : '';
+
+        // Toggle contenteditable
+        document.querySelectorAll('[contenteditable]').forEach(el => {
+            el.contentEditable = editMode ? 'true' : 'false';
+        });
+
+        if (editMode) {
+            editToggle.classList.add('show');
+        }
+    });
+
+    // ===== SAVE / EXPORT / RESET =====
+    window.saveEdits = function() {
+        const editableEls = document.querySelectorAll('[contenteditable]');
+        const data = {};
+        editableEls.forEach((el, i) => {
+            const slideEl = el.closest('.slide');
+            const slideNum = slideEl ? slideEl.dataset.slide : '0';
+            const key = 's' + slideNum + '_' + i;
+            data[key] = el.innerHTML;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // Flash feedback
+        const btn = document.querySelector('.edit-btn');
+        btn.style.background = 'rgba(52,211,153,0.3)';
+        btn.textContent = 'SAVED!';
+        setTimeout(() => {
+            btn.style.background = '';
+            btn.textContent = 'SAVE';
+        }, 1200);
+    };
+
+    window.exportHTML = function() {
+        const html = document.documentElement.outerHTML;
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'presentation-blueprint-export.html';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    window.resetEdits = function() {
+        if (confirm('重設所有編輯？此操作無法復原。')) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    };
+
+    // ===== LOAD SAVED EDITS =====
+    function loadEdits() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            const editableEls = document.querySelectorAll('[contenteditable]');
+            editableEls.forEach((el, i) => {
+                const slideEl = el.closest('.slide');
+                const slideNum = slideEl ? slideEl.dataset.slide : '0';
+                const key = 's' + slideNum + '_' + i;
+                if (data[key] !== undefined) {
+                    el.innerHTML = data[key];
+                }
+            });
+        } catch(e) {
+            console.warn('Failed to load edits:', e);
+        }
+    }
+    loadEdits();
+
+    // ===== REDUCED MOTION CHECK =====
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ===== FEATURE 1: CURSOR AURA =====
+    const cursorAura = document.getElementById('cursor-aura');
+    let mouseX = 0, mouseY = 0;
+    let auraX = 0, auraY = 0;
+    const canHover = window.matchMedia('(hover: hover)').matches;
+
+    if (canHover && !prefersReducedMotion) {
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            if (!cursorAura.classList.contains('active')) {
+                cursorAura.classList.add('active');
+            }
+        });
+
+        document.addEventListener('mouseleave', () => {
+            cursorAura.classList.remove('active');
+        });
+    }
+
+    // ===== FEATURE 2: PARTICLE SYSTEM =====
+    const particleCanvas = document.getElementById('particle-canvas');
+    const ctx = particleCanvas ? particleCanvas.getContext('2d') : null;
+
+    const slideColors = {
+        default: { r: 56, g: 152, b: 255 },
+        warm: { r: 255, g: 138, b: 61 },
+        cyan: { r: 0, g: 212, b: 255 }
+    };
+
+    function getSlideColor(n) {
+        if (n === 8 || n === 10) return slideColors.warm;
+        if (n === 9 || n === 11) return slideColors.cyan;
+        return slideColors.default;
+    }
+
+    let particles = [];
+    let particleColor = slideColors.default;
+    let targetColor = slideColors.default;
+
+    class Particle {
+        constructor(w, h) {
+            this.x = Math.random() * w;
+            this.y = Math.random() * h;
+            this.vx = (Math.random() - 0.5) * 0.4;
+            this.vy = (Math.random() - 0.5) * 0.4;
+            this.radius = Math.random() * 1.5 + 0.5;
+            this.alpha = Math.random() * 0.4 + 0.1;
+        }
+        update(w, h) {
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.x < 0) this.x = w;
+            if (this.x > w) this.x = 0;
+            if (this.y < 0) this.y = h;
+            if (this.y > h) this.y = 0;
+        }
+    }
+
+    function initParticles() {
+        if (!ctx) return;
+        particleCanvas.width = window.innerWidth;
+        particleCanvas.height = window.innerHeight;
+        particles = [];
+        const count = Math.min(70, Math.floor(window.innerWidth * window.innerHeight / 15000));
+        for (let i = 0; i < count; i++) {
+            particles.push(new Particle(particleCanvas.width, particleCanvas.height));
+        }
+    }
+
+    function lerpColor(a, b, t) {
+        return {
+            r: a.r + (b.r - a.r) * t,
+            g: a.g + (b.g - a.g) * t,
+            b: a.b + (b.b - a.b) * t
+        };
+    }
+
+    function renderParticles() {
+        if (!ctx || document.hidden) return;
+        const w = particleCanvas.width;
+        const h = particleCanvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        // Lerp color
+        particleColor = lerpColor(particleColor, targetColor, 0.02);
+        const cr = Math.round(particleColor.r);
+        const cg = Math.round(particleColor.g);
+        const cb = Math.round(particleColor.b);
+
+        // Update & draw particles
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.update(w, h);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${cr},${cg},${cb},${p.alpha})`;
+            ctx.fill();
+        }
+
+        // Constellation lines
+        const maxDist = 120;
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = dx * dx + dy * dy;
+                if (dist < maxDist * maxDist) {
+                    const alpha = (1 - Math.sqrt(dist) / maxDist) * 0.15;
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    if (!prefersReducedMotion && ctx) {
+        initParticles();
+        window.addEventListener('resize', initParticles);
+    }
+
+    // ===== FEATURE 10: TYPEWRITER EFFECT =====
+    if (!prefersReducedMotion) {
+        const jsonPreview = document.querySelector('#slide-9 .json-preview');
+        let typewriterDone = false;
+
+        if (jsonPreview) {
+            const originalHTML = jsonPreview.innerHTML;
+            // Remove the ::after cursor temporarily during setup
+            function setupTypewriter() {
+                if (typewriterDone || editMode) return;
+                typewriterDone = true;
+
+                // Get text content while preserving spans
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = originalHTML;
+
+                // Walk text nodes and wrap each char
+                function wrapChars(node) {
+                    if (node.nodeType === 3) { // Text node
+                        const text = node.textContent;
+                        const fragment = document.createDocumentFragment();
+                        for (let i = 0; i < text.length; i++) {
+                            const span = document.createElement('span');
+                            span.className = 'typewriter-char';
+                            span.textContent = text[i];
+                            fragment.appendChild(span);
+                        }
+                        node.parentNode.replaceChild(fragment, node);
+                    } else if (node.nodeType === 1) { // Element node
+                        // Process children in reverse to avoid mutation issues
+                        const children = Array.from(node.childNodes);
+                        children.forEach(child => wrapChars(child));
+                    }
+                }
+
+                wrapChars(tempDiv);
+                jsonPreview.innerHTML = tempDiv.innerHTML;
+
+                // Reveal chars one by one
+                const chars = jsonPreview.querySelectorAll('.typewriter-char');
+                chars.forEach((ch, i) => {
+                    setTimeout(() => ch.classList.add('typed'), i * 25);
+                });
+            }
+
+            const typewriterObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !typewriterDone) {
+                        // Small delay to let slide transition settle
+                        setTimeout(setupTypewriter, 300);
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            const slide9 = document.getElementById('slide-9');
+            if (slide9) typewriterObserver.observe(slide9);
+        }
+    }
+
+    // ===== FEATURE 11: GLITCH EFFECT (DEATH FLOW) =====
+    if (!prefersReducedMotion) {
+        const deathGlitch = document.querySelector('.death-glitch');
+        let glitchInterval = null;
+
+        if (deathGlitch) {
+            const glitchSteps = deathGlitch.querySelectorAll('.seq-step');
+
+            function triggerGlitch() {
+                deathGlitch.classList.add('glitch-active');
+                // Pick random death step elements
+                const randomStep = glitchSteps[Math.floor(Math.random() * glitchSteps.length)];
+                if (randomStep) {
+                    randomStep.classList.add('glitch-burst');
+                    setTimeout(() => randomStep.classList.remove('glitch-burst'), 150);
+                }
+                setTimeout(() => deathGlitch.classList.remove('glitch-active'), 200);
+            }
+
+            function startGlitch() {
+                if (glitchInterval) return;
+                function scheduleNext() {
+                    const delay = 2000 + Math.random() * 4000;
+                    glitchInterval = setTimeout(() => {
+                        triggerGlitch();
+                        scheduleNext();
+                    }, delay);
+                }
+                scheduleNext();
+            }
+
+            function stopGlitch() {
+                if (glitchInterval) {
+                    clearTimeout(glitchInterval);
+                    glitchInterval = null;
+                }
+                deathGlitch.classList.remove('glitch-active');
+            }
+
+            const glitchObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) startGlitch();
+                    else stopGlitch();
+                });
+            }, { threshold: 0.3 });
+
+            const slide8 = document.getElementById('slide-8');
+            if (slide8) glitchObserver.observe(slide8);
+        }
+    }
+
+    // ===== FEATURE 12: HEARTBEAT PULSE LINE =====
+    const heartbeatPath = document.getElementById('heartbeat-path');
+    if (heartbeatPath && !prefersReducedMotion) {
+        // Wait for SVG to render, then measure path length
+        requestAnimationFrame(() => {
+            const pathLength = heartbeatPath.getTotalLength();
+            heartbeatPath.style.setProperty('--path-length', pathLength);
+            heartbeatPath.style.strokeDasharray = pathLength;
+            heartbeatPath.style.strokeDashoffset = pathLength;
+        });
+
+        const heartbeatObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    heartbeatSvg.classList.add('heartbeat-visible');
+                }
+            });
+        }, { threshold: 0.5 });
+
+        const heartbeatSvg = document.getElementById('heartbeat-svg');
+        if (heartbeatSvg) heartbeatObserver.observe(heartbeatSvg);
+    }
+
+    // ===== FEATURE 4: ENHANCED SLIDE OBSERVER (exit/enter transitions) =====
+    const slideVisibility = new Map();
+
+    const transitionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const slide = entry.target;
+            const ratio = entry.intersectionRatio;
+            slideVisibility.set(slide, ratio);
+
+            if (ratio > 0.5) {
+                slide.classList.remove('slide-exiting');
+                slide.classList.add('slide-entering');
+                setTimeout(() => slide.classList.remove('slide-entering'), 700);
+            } else if (ratio < 0.2 && ratio > 0) {
+                slide.classList.add('slide-exiting');
+            } else if (ratio === 0) {
+                slide.classList.remove('slide-exiting', 'slide-entering');
+            }
+        });
+    }, { threshold: [0, 0.2, 0.5, 0.8] });
+
+    slides.forEach(slide => transitionObserver.observe(slide));
+
+    // ===== FEATURE 8: NUMBER COUNTER ANIMATION =====
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function animateCounter(el) {
+        if (editMode || el.dataset.counted) return;
+        el.dataset.counted = '1';
+        const target = parseFloat(el.dataset.target);
+        const prefix = el.dataset.prefix || '';
+        const isFloat = String(el.dataset.target).includes('.');
+        const decimals = isFloat ? (String(el.dataset.target).split('.')[1] || '').length : 0;
+        const duration = 1200;
+        const start = performance.now();
+
+        function tick(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const value = target * easeOutCubic(progress);
+            el.textContent = prefix + (isFloat ? value.toFixed(decimals) : Math.round(value));
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+
+    if (!prefersReducedMotion) {
+        const counterObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.querySelectorAll('.counter-animated[data-target]').forEach(el => {
+                        animateCounter(el);
+                    });
+                }
+            });
+        }, { threshold: 0.5 });
+
+        // Observe slides that contain counters (5 and 7)
+        const slide5 = document.getElementById('slide-5');
+        const slide7 = document.getElementById('slide-7');
+        if (slide5) counterObserver.observe(slide5);
+        if (slide7) counterObserver.observe(slide7);
+    }
+
+    // ===== FEATURE 3: CIRCUIT OVERLAY PARALLAX =====
+    const circuitOverlay = document.getElementById('circuit-overlay');
+
+    // ===== SHARED rAF LOOP =====
+    function animationLoop() {
+        // Cursor aura lerp
+        if (canHover && !prefersReducedMotion) {
+            auraX += (mouseX - auraX) * 0.12;
+            auraY += (mouseY - auraY) * 0.12;
+            cursorAura.style.transform = `translate(${auraX - 130}px, ${auraY - 130}px)`;
+        }
+
+        // Particle rendering
+        if (!prefersReducedMotion && ctx) {
+            renderParticles();
+        }
+
+        requestAnimationFrame(animationLoop);
+    }
+    requestAnimationFrame(animationLoop);
+
+    // ===== ENHANCED updateSlide (add particle color + circuit parallax) =====
+    const originalUpdateSlide = updateSlide;
+    updateSlide = function(n) {
+        originalUpdateSlide(n);
+        // Particle color transition
+        targetColor = getSlideColor(n);
+        // Circuit parallax
+        if (circuitOverlay) {
+            const shift = (n - 1) * -30;
+            circuitOverlay.style.transform = `translateY(${shift}px)`;
+        }
+    };
+
+    // ===== INITIAL STATE =====
+    updateSlide(1);
+
+})();
+</script>
+
+</body>
+</html>
