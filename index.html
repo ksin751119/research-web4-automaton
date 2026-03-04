@@ -1380,6 +1380,113 @@
             text-align: center;
         }
 
+        /* ===========================================
+           DATA FLOW TIMELINE (Slide 5)
+           =========================================== */
+        .dataflow-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.4rem, 0.8vh, 0.6rem);
+        }
+
+        .dataflow-header .diagram-node {
+            min-width: 0;
+            padding: clamp(0.4rem, 0.8vw, 0.7rem) clamp(0.5rem, 1vw, 0.8rem);
+        }
+
+        .dataflow-header .diagram-node .icon {
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            margin-bottom: 0.15em;
+        }
+
+        .dataflow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.2rem, 0.4vh, 0.3rem);
+        }
+
+        .df-step {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            align-items: center;
+            min-height: clamp(2rem, 4vh, 3.5rem);
+        }
+
+        .df-cell {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            padding: clamp(0.2rem, 0.4vh, 0.35rem) clamp(0.4rem, 0.8vw, 0.6rem);
+            border-radius: 6px;
+            line-height: 1.35;
+        }
+
+        .df-cell.active {
+            background: rgba(56, 152, 255, 0.06);
+            border: 1.5px solid rgba(56, 152, 255, 0.2);
+        }
+
+        .df-cell.active-cyan {
+            background: rgba(0, 212, 255, 0.06);
+            border: 1.5px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .df-cell.active-warm {
+            background: rgba(255, 138, 61, 0.06);
+            border: 1.5px solid rgba(255, 138, 61, 0.2);
+        }
+
+        .df-cell .df-label {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: clamp(0.6rem, 0.85vw, 0.75rem);
+            color: var(--accent);
+            display: block;
+            margin-bottom: 0.1em;
+        }
+
+        .df-cell.active-cyan .df-label {
+            color: var(--accent-cyan);
+        }
+
+        .df-cell.active-warm .df-label {
+            color: var(--accent-warm);
+        }
+
+        .df-arrow {
+            font-family: var(--font-mono);
+            font-size: clamp(0.6rem, 0.8vw, 0.7rem);
+            color: var(--text-dim);
+            text-align: center;
+            padding: clamp(0.15rem, 0.3vh, 0.25rem) 0;
+        }
+
+        .df-step-num {
+            font-family: var(--font-mono);
+            font-weight: 800;
+            font-size: clamp(0.65rem, 0.9vw, 0.8rem);
+            color: var(--accent);
+            background: rgba(56, 152, 255, 0.1);
+            border: 1px solid rgba(56, 152, 255, 0.25);
+            border-radius: 4px;
+            padding: 0.05em 0.4em;
+            margin-right: 0.3em;
+            display: inline-block;
+        }
+
+        .df-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(56, 152, 255, 0.15), transparent);
+            margin: clamp(0.1rem, 0.2vh, 0.15rem) 0;
+        }
+
+        @media (max-width: 768px) {
+            .dataflow-header { grid-template-columns: 1fr; gap: var(--element-gap); }
+            .df-step { grid-template-columns: 1fr; }
+            .df-cell:empty { display: none; }
+        }
+
         /* Law cards */
         .law-card {
             border-radius: 12px;
