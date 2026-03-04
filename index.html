@@ -2244,6 +2244,134 @@
 </section>
 
 <!-- =========================================
+     SLIDE 05 — End-to-End Example: Deploy Website
+     ========================================= -->
+<section class="slide" id="slide-5" data-slide="5">
+    <div class="corner-mark tl"></div><div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div><div class="corner-mark br"></div>
+    <div class="slide-inner">
+        <div class="tag anim-fade mb-sm" contenteditable="false">實戰</div>
+        <h2 class="anim-fade" contenteditable="false">端到端範例 — <span class="accent">部署個人網站</span></h2>
+
+        <!-- 3-Column Header: Local Agent / Conway Cloud / Blockchain -->
+        <div class="dataflow-header anim-scale" style="transition-delay: 0.12s;">
+            <div class="diagram-node" style="min-width: 0;">
+                <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x1F5A5;</div>
+                <div class="node-title" contenteditable="false">Local Agent</div>
+            </div>
+            <div class="diagram-node node-cyan" style="min-width: 0;">
+                <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x2601;</div>
+                <div class="node-title" contenteditable="false">Conway Cloud</div>
+            </div>
+            <div class="diagram-node node-warm" style="min-width: 0;">
+                <div class="icon" style="font-size: clamp(1.2rem, 2vw, 1.8rem);">&#x26D3;</div>
+                <div class="node-title" contenteditable="false">Blockchain</div>
+            </div>
+        </div>
+
+        <!-- Data Flow Steps -->
+        <div class="dataflow-steps anim-fade" style="transition-delay: 0.22s;">
+
+            <!-- Step 1: Receive Task + LLM Reasoning -->
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span class="df-step-num">01</span>
+                    <span contenteditable="false">Genesis:「架一個個人網站」</span><br>
+                    <span style="color: var(--text-dim);" contenteditable="false">組 context（身份+credits+工具）</span>
+                </div>
+                <div class="df-cell"></div>
+                <div class="df-cell"></div>
+            </div>
+            <div class="df-arrow">──── POST /inference ────▶</div>
+            <div class="df-step">
+                <div class="df-cell"></div>
+                <div class="df-cell active-cyan">
+                    <span class="df-label">LLM 推理</span>
+                    <span contenteditable="false">規劃 3 步：建站、域名、開放端口</span>
+                </div>
+                <div class="df-cell"></div>
+            </div>
+
+            <div class="df-divider"></div>
+
+            <!-- Step 2: Build Website -->
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span class="df-step-num">02</span>
+                    <span style="font-family: var(--font-mono);" contenteditable="false">exec("npx create-next-app")</span><br>
+                    <span style="color: var(--text-dim);" contenteditable="false">Policy Engine ✓</span>
+                </div>
+                <div class="df-cell"></div>
+                <div class="df-cell"></div>
+            </div>
+            <div class="df-arrow">──── POST /sandbox/exec ────▶</div>
+            <div class="df-step">
+                <div class="df-cell"></div>
+                <div class="df-cell active-cyan">
+                    <span class="df-label">Sandbox VM</span>
+                    <span contenteditable="false">stdout: "Created my-site"</span>
+                </div>
+                <div class="df-cell"></div>
+            </div>
+
+            <div class="df-divider"></div>
+
+            <!-- Step 3: Register Domain + Pay -->
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span class="df-step-num">03</span>
+                    <span style="font-family: var(--font-mono);" contenteditable="false">register_domain("bob.conway.tech")</span>
+                </div>
+                <div class="df-cell active-cyan">
+                    <span class="df-label">扣 Credits</span>
+                    <span contenteditable="false">域名費 → x402</span>
+                </div>
+                <div class="df-cell active-warm">
+                    <span class="df-label">USDC 結算</span>
+                    <span contenteditable="false">Base 鏈上確認</span>
+                </div>
+            </div>
+
+            <div class="df-divider"></div>
+
+            <!-- Step 4: Expose Port -->
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span class="df-step-num">04</span>
+                    <span style="font-family: var(--font-mono);" contenteditable="false">expose_port(3000)</span>
+                </div>
+                <div class="df-cell active-cyan">
+                    <span class="df-label">反向代理</span>
+                    <span contenteditable="false">bob.conway.tech ✓</span>
+                </div>
+                <div class="df-cell"></div>
+            </div>
+
+            <div class="df-divider"></div>
+
+            <!-- Step 5: Persist + Report -->
+            <div class="df-step">
+                <div class="df-cell active">
+                    <span class="df-step-num">05</span>
+                    <span contenteditable="false">寫入 turns 表 · 更新 memory</span><br>
+                    <span style="color: var(--text-dim);" contenteditable="false">SOUL.md:「已部署第一個網站」</span>
+                </div>
+                <div class="df-cell"></div>
+                <div class="df-cell"></div>
+            </div>
+        </div>
+
+        <!-- Summary insight -->
+        <div class="insight-box anim-fade mt-sm" style="transition-delay: 0.35s;">
+            <p style="font-size: var(--body-size);" contenteditable="false">
+                <strong class="highlight">5 個 Turn</strong> — 涵蓋<strong>推理</strong>、<strong>執行</strong>、<strong class="warm">付費</strong>三大核心。完成後回到 ReAct 循環等待下一個任務。
+            </p>
+        </div>
+    </div>
+    <div class="slide-num-watermark">05</div>
+</section>
+
+<!-- =========================================
      SLIDE 05 — Tool System
      ========================================= -->
 <section class="slide" id="slide-5" data-slide="5">
