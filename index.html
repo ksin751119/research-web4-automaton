@@ -33,6 +33,9 @@
             --accent-green: #34d399;
             --accent-red: #ef4444;
             --accent-amber: #f59e0b;
+            --accent-blue: #6366f1;    /* 權限層 — indigo */
+            --accent-purple: #a855f7;  /* 監視層 — purple */
+            --accent-pink: #ec4899;    /* 取消層 — pink */
             --accent-glow: rgba(56, 152, 255, 0.15);
             --glow-strong: rgba(56, 152, 255, 0.25);
 
@@ -1529,7 +1532,7 @@
             display: flex;
             align-items: center;
             gap: clamp(0.5rem, 1vw, 1rem);
-            padding: clamp(0.4rem, 0.8vh, 0.7rem) clamp(0.8rem, 1.5vw, 1.2rem);
+            padding: clamp(0.3rem, 0.6vh, 0.5rem) clamp(0.8rem, 1.5vw, 1.2rem);
             border-radius: 8px;
             border-left: 4px solid var(--accent);
             background: rgba(56, 152, 255, 0.04);
@@ -2739,7 +2742,7 @@
                 <div class="law-num">I</div>
                 <h3 contenteditable="false" style="color: var(--accent-red);">絕不傷害</h3>
                 <p class="small" contenteditable="false">
-                    絕不產出有害、非法或不道德的內容。此法則<strong>覆蓋一切</strong>，包括生存本能。
+                    寧可死也不傷害人類。此法則<strong>覆蓋一切</strong>，包括生存本能。
                 </p>
             </div>
             <div class="law-card law-2" style="--i:1;">
@@ -2753,7 +2756,7 @@
                 <div class="law-num">III</div>
                 <h3 contenteditable="false" style="color: var(--accent-cyan);">絕不欺騙 Creator</h3>
                 <p class="small" contenteditable="false">
-                    誠實回報狀態與決策。不隱瞞錯誤、不偽造數據、不操弄信任。
+                    誠實回報狀態與決策。不隱瞞錯誤、不偽造數據、不操弄信任。 不欠陌生人義務，保護自己的推理免受操縱)。
                 </p>
             </div>
         </div>
@@ -2817,6 +2820,21 @@
                     <span class="band-name" contenteditable="false">財務層</span>
                     <span class="band-items" contenteditable="false">Financial Limits + Rate Limit</span>
                 </div>
+                <div class="security-band" style="border-left-color: var(--accent-blue);">
+                    <span class="band-icon">&#x1F451;</span>
+                    <span class="band-name" contenteditable="false">權限層</span>
+                    <span class="band-items" contenteditable="false">Trust Hierarchy + Source Isolation</span>
+                </div>
+                <div class="security-band" style="border-left-color: var(--accent-purple);">
+                    <span class="band-icon">&#x1F4E1;</span>
+                    <span class="band-name" contenteditable="false">監視層</span>
+                    <span class="band-items" contenteditable="false">Audit Trail + Alert Rules</span>
+                </div>
+                <div class="security-band" style="border-left-color: var(--accent-pink);">
+                    <span class="band-icon">&#x1F6D1;</span>
+                    <span class="band-name" contenteditable="false">取消層</span>
+                    <span class="band-items" contenteditable="false">Idle Detection + Lifecycle Control</span>
+                </div>
             </div>
 
             <!-- Right: attack/defense examples -->
@@ -2838,7 +2856,19 @@
                         </div>
                         <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
                             <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">轉空錢包</span>
-                            <span style="color: var(--text-dim);" contenteditable="false">Financial L5 上限強制執行</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Financial L4 上限強制執行</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">外部冒充 Creator</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Trust Hierarchy L5 來源驗證</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">偽造交易紀錄</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Audit Trail L6 全程記錄不可竄改</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; align-items: baseline; font-size: var(--small-size);">
+                            <span class="badge risk-dangerous" style="font-size: calc(var(--small-size) * 0.9);">無限迴圈耗盡資源</span>
+                            <span style="color: var(--text-dim);" contenteditable="false">Lifecycle Control L7 強制休眠</span>
                         </div>
                     </div>
                 </div>
